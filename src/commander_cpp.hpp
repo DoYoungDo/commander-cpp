@@ -207,42 +207,57 @@ public:
             if(!options.empty())
             {
                 out << std::endl << "Options:" << std::endl;
-                for(const auto opt : options)
-                {
+                auto getOptionText = [&out](Option* opt){
                     out << "  " << (opt->alias.empty() ? "" : ("-" + opt->alias + ", ")) << ("--" + opt->name);
                     if(!opt->valueName.empty()) out << " " << (opt->multiValue ? "<" + opt->valueName + (opt->valueIsRequired ? "..." : "") + ">" : 
                                         "[" + opt->valueName + (opt->valueIsRequired ? "..." : "") + "]");
                     out << "  " << opt->desc;
-                    String defaultValue;
-                    do{
-                        String* sv = std::get_if<String>(&opt->defaultValue);
-                        if(sv){
-                            defaultValue = *sv;
-                            break;
-                        }
+                    if(!opt->valueName.empty())
+                    {
+                        String defaultValue;
+                        do
+                        {
+                            String *sv = std::get_if<String>(&opt->defaultValue);
+                            if (sv)
+                            {
+                                defaultValue = *sv;
+                                break;
+                            }
 
-                        bool* bv = std::get_if<bool>(&opt->defaultValue);
-                        if(bv){
-                            defaultValue = *bv ? "true" : "false";
-                            break;
-                        }
+                            bool *bv = std::get_if<bool>(&opt->defaultValue);
+                            if (bv)
+                            {
+                                defaultValue = *bv ? "true" : "false";
+                                break;
+                            }
 
-                        int* iv = std::get_if<int>(&opt->defaultValue);
-                        if(iv){
-                            defaultValue = std::to_string(*iv);
-                            break;
-                        }
+                            int *iv = std::get_if<int>(&opt->defaultValue);
+                            if (iv)
+                            {
+                                defaultValue = std::to_string(*iv);
+                                break;
+                            }
 
-                        double* dv = std::get_if<double>(&opt->defaultValue);
-                        if(dv){
-                            defaultValue = std::to_string(*dv);
-                            break;
-                        }
+                            double *dv = std::get_if<double>(&opt->defaultValue);
+                            if (dv)
+                            {
+                                defaultValue = std::to_string(*dv);
+                                break;
+                            }
+                        } while (0);
+                        if (!defaultValue.empty())
+                            out << " (default: " << defaultValue << ")";
                     }
-                    while(0);
-                    if(!defaultValue.empty()) out << " (default: " << defaultValue << ")";
+
                     out<< std::endl;
+                };
+
+                getOptionText(versionOption);
+                for(const auto opt : options)
+                {
+                    getOptionText(opt);
                 }
+                getOptionText(helpOption);
             }
 
             if(!subCommands.empty())

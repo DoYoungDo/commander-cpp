@@ -16,6 +16,12 @@ void test1(int argc, char **argv)
     ->option("--reuse", "重用生成文件", false)
     ->option("--generatewithVersionName <name>", "生成名称包含版本名称") // 补丁参数
     ->action([](std::vector<std::string> args, std::map<std::string, Variant> opts) {
+        for(auto a : args){
+            std::cout << a << std::endl;
+        }
+        for(auto o : opts){
+            std::cout << o.first << std::endl;
+        }
         std::cout << "test1 action" << std::endl;
     })
     ;
