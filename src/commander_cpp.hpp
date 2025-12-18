@@ -8,7 +8,7 @@
 namespace COMMANDER_CPP
 {
 using String = std::string;
-using Variant = std::variant<std::monostate, int, double, String, bool>;
+using Variant = std::variant<std::monostate, int, double, String, bool, std::vector<std::variant<int, double, String, bool>>>;
 template<typename K, typename V>
 using Map = std::map<K,V>;
 template<typename T>
@@ -353,12 +353,21 @@ public:
         return this;
     }
 
-    void parse(int argc, char** argv, int index = 0)
+    void parse(int argc, char** argv, int index = 1)
     {
         Vector<String> args;
         Map<String, Variant> opts;
 
         int cur = index;
+        std::regex optionAliasReg(R"(^-([a-zA-Z]+)$)");
+        std::regex optionReg(R"(^(?:-([a-zA-Z])|--([a-zA-Z-]+))(?:=(.+))?$)");
+        std::regex commandReg(R"(^(?!-)([a-zA-Z][a-zA-Z\d]*)$)");
+
+        std::regex intValueReg(R"(^-?\d+$)");
+        std::regex doubleValueReg(R"(^-?\d+\.\d+$)");
+        std::regex boolValueReg(R"(^(?:(true)|false)$)");
+        
+
         auto parseMuiltOptionAlias = [&](const String& alias){
             // std::cout << "alias: " << alias << std::endl;
             for(auto it = alias.begin(); it != alias.end(); it++)
@@ -385,16 +394,64 @@ public:
         };
         auto parseOptionName = [&](const String& aliasOrName, const String& value = String()){
             // std::cout << "aliasOrName: " << aliasOrName << ", value: " << value << std::endl;
-            Option* opt = findOptionByAlias(aliasOrName) || findOption(aliasOrName);
+            Option* opt = findOptionByAlias(aliasOrName);
             if(!opt)
             {
-                *pLogger << "[warn]:" << "option " << aliasOrName << " not found\n";
-                return true;
+                opt = findOption(aliasOrName);
+                if(!opt)
+                {
+                    *pLogger << "[warn]:" << "option " << aliasOrName << " not found\n";
+                    return true;
+                }
             }
             Variant v;
             if(opt->valueIsRequired)
             {
-                // TODO
+                auto getValue = [=](const String& text){
+                    if(text.empty())
+                    {
+                        return Variant();
+                    }
+                    std::smatch res;
+                    if(std::regex_search(text, res, intValueReg))
+                    {
+                        return Variant(std::stoi(text));
+                    }
+                    
+                    if(std::regex_search(text, res, doubleValueReg))
+                    {
+                        return Variant(std::stod(text));
+                    }
+                    
+                    if(std::regex_search(text, res, boolValueReg))
+                    {
+                        return Variant(res.str(1).empty());
+                    }
+
+                    return Variant(text);
+                };             
+                if(opt->multiValue)
+                {
+
+                }
+                else
+                {
+                    String valueText = !value.empty() ? value : ++cur < argc ? argv[cur] : "";
+                    std::smatch res;
+                    if(valueText.empty() || std::regex_search(valueText, res, optionAliasReg) || std::regex_search(valueText, res, optionReg))
+                    {
+                        *pLogger << "[error]" << "option: " << opt->name << "need a value, but got empty.\n";
+                        return false;   
+                    }
+
+                    v = getValue(valueText);
+                }
+
+                if(std::holds_alternative<std::monostate>(v))
+                {
+                    *pLogger << "[error]" << "option: "<<opt->name<<"got an invalid value";
+                    return false;
+                }
             }
 
             opts[opt->name] = v;
@@ -416,23 +473,20 @@ public:
             // std::cout << cur<< std::endl;
             String arg = argv[cur];
             // std::cout << cur << " " << arg << std::endl;
-            std::regex reg(R"(^-([a-zA-Z]+)$)");
             std::smatch res;
-            if(std::regex_search(arg, res, reg))
+            if(std::regex_search(arg, res, optionAliasReg))
             {
                 if(parseMuiltOptionAlias(res.str(1))) continue;
                 return;
             }
 
-            reg = std::regex(R"(^(?:-([a-zA-Z])|--([a-zA-Z-]+))(?:=(.+))?$)");
-            if(std::regex_search(arg, res, reg))
+            if(std::regex_search(arg, res, optionReg))
             {
                 if(parseOptionName(!res.str(1).empty() ? res.str(1) : res.str(2), res.str(3))) continue;
                 return;
             }
 
-            reg = std::regex(R"(^(?!-)([a-zA-Z][a-zA-Z\d]*)$)");
-            if(std::regex_search(arg, res, reg))
+            if(std::regex_search(arg, res, commandReg))
             {
                 parseCommand(res.str(1));
                 // 如果解析到子命令直接就使用子命令的解析了，不再继续当前的解析了
@@ -479,6 +533,14 @@ private:
     class Option;
     Option* findOption(const String& name)
     {
+        if(name == versionOption->name)
+        {
+            return versionOption;
+        }
+        if(name == helpOption->name)
+        {
+            return helpOption;
+        }
         for(const auto opt : options)
         {
             if(opt->name == name)
@@ -490,6 +552,14 @@ private:
     }
     Option* findOptionByAlias(const String& alias)
     {
+        if(alias == versionOption->alias)
+        {
+            return versionOption;
+        }
+        if(alias == helpOption->alias)
+        {
+            return helpOption;
+        }
         for(const auto opt : options)
         {
             if(opt->alias == alias)
