@@ -440,7 +440,7 @@ public:
                     std::smatch res;
                     if(valueText.empty() || std::regex_search(valueText, res, optionAliasReg) || std::regex_search(valueText, res, optionReg))
                     {
-                        *pLogger << "[error]" << "option: " << opt->name << "need a value, but got empty.\n";
+                        pLogger->error(String("option: ") + opt->name + String("need a value, but got empty."));
                         return false;   
                     }
 
@@ -449,7 +449,7 @@ public:
 
                 if(std::holds_alternative<std::monostate>(v))
                 {
-                    *pLogger << "[error]" << "option: "<<opt->name<<"got an invalid value";
+                    pLogger->error(String("option: ") + opt->name + String("got an invalid value."));
                     return false;
                 }
             }
