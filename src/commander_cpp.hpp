@@ -338,7 +338,7 @@ public:
         return this;
     }
 
-    void parse(int argc, char** argv, int index = 0)
+    void parse(int argc, char** argv, int index = 1)
     {
         Vector<String> args;
         Map<String, Variant> opts;
@@ -370,11 +370,15 @@ public:
         };
         auto parseOptionName = [&](const String& aliasOrName, const String& value = String()){
             // std::cout << "aliasOrName: " << aliasOrName << ", value: " << value << std::endl;
-            Option* opt = findOptionByAlias(aliasOrName) || findOption(aliasOrName);
+            Option* opt = findOptionByAlias(aliasOrName);
             if(!opt)
             {
-                *pLogger << "[warn]:" << "option " << aliasOrName << " not found\n";
-                return true;
+                opt = findOption(aliasOrName);
+                if(!opt)
+                {
+                    *pLogger << "[warn]:" << "option " << aliasOrName << " not found\n";
+                    return true;
+                }
             }
             Variant v;
             if(opt->valueIsRequired)
@@ -387,8 +391,15 @@ public:
             return true;
         };
         auto parseCommand = [&](const String& name){
-            cur++;
-            std::cout << "command: " << name << std::endl;
+            // cur++;
+            // std::cout << "command: " << name << std::endl;
+            Command* command = findCommand(name);
+            if(!command)
+            {
+                return false;
+            }
+
+            command->parse(argc, argv, ++cur);
             return true;
         };
         auto parseArgument = [&](const String& arg){
@@ -419,9 +430,10 @@ public:
             reg = std::regex(R"(^(?!-)([a-zA-Z][a-zA-Z\d]*)$)");
             if(std::regex_search(arg, res, reg))
             {
-                parseCommand(res.str(1));
                 // 如果解析到子命令直接就使用子命令的解析了，不再继续当前的解析了
-                return;
+                if(parseCommand(res.str(1))) return;
+                // 否则继续解析
+                continue;
             }
 
             if(parseArgument(arg)) continue;
@@ -464,7 +476,10 @@ private:
     class Option;
     Option* findOption(const String& name)
     {
-        for(const auto opt : options)
+        Vector<Option*> opts = options;
+        opts.push_back(versionOption);
+        opts.push_back(helpOption);
+        for(const auto opt : opts)
         {
             if(opt->name == name)
             {
@@ -475,7 +490,10 @@ private:
     }
     Option* findOptionByAlias(const String& alias)
     {
-        for(const auto opt : options)
+        Vector<Option*> opts = options;
+        opts.push_back(versionOption);
+        opts.push_back(helpOption);
+        for(const auto opt : opts)
         {
             if(opt->alias == alias)
             {
