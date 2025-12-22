@@ -265,8 +265,6 @@ public:
         String name = res.str(1);
         String arg = res.str(2);
         Command* cmd = (new Command(name, pLogger))->description(desc)->argument(arg);
-        cmd->versionOption = versionOption;
-        cmd->helpOption = helpOption;
 
         addCommand(cmd);
 
@@ -287,6 +285,9 @@ public:
         }
 
         command->parentCommand = this;
+        command->versionOption = versionOption;
+        command->helpOption = helpOption;
+
         subCommands.push_back(command);
         return this;
     };
