@@ -13,7 +13,7 @@ template<typename K, typename V>
 using Map = std::map<K,V>;
 template<typename T>
 using Vector = std::vector<T>;
-using Action = std::function<void(Vector<String> args,Map<String, Variant> opts)>;
+using Action = std::function<void(Vector<Variant> args,Map<String, Variant> opts)>;
 
 class FinialRelease
 {
@@ -27,18 +27,26 @@ private:
 class Logger
 {
     public:
-        // template <typename... Args>
-        virtual Logger* log(const String& msg) = 0;
-        inline Logger& operator<<(const String& msg)
-        {
-            return *log(msg);
-        }
+        virtual Logger* debug(const String& msg) {return this;};
+        virtual Logger* warn(const String& msg) {return this;};
+        virtual Logger* error(const String& msg) {return this;};
+        virtual Logger* print(const String& msg) = 0;
+};
+
+class LoggerDefaultImpl : public Logger
+{
+public:
+    virtual Logger *print(const String &msg) override
+    {
+        std::cout << msg << std::endl;
+        return this;
+    };
 };
 
 class Command
 {
 public:
-    Command(const String& name, Logger* logger = nullptr)
+    Command(const String& name, Logger* logger = new LoggerDefaultImpl())
         : commandName(name)
         , actionCallback(nullptr)
         , pLogger(logger)
@@ -46,20 +54,6 @@ public:
         , helpOption(nullptr)
         , parentCommand(nullptr)
     {
-        if(!pLogger)
-        {
-            class LoggerImpl : public Logger
-            {
-                public:
-                    Logger* log(const String& msg) override
-                    {
-                        std::cout << msg;
-                        return this;
-                    }
-            };
-            pLogger = new LoggerImpl();
-        }
-
         version("0.0.0", "-V --version", "out put version number.");
         help("-h --help");
     }
@@ -279,14 +273,12 @@ public:
         */
     virtual Command* command(const String& nameAndArg, const String& desc = String())
     {
-        // std::cout << "nameAndArg: " << nameAndArg << std::endl;
+        if(pLogger) pLogger->debug(String("create command: nameAndArg: ") + nameAndArg);
         std::regex reg(R"(^\s*([a-zA-Z][a-zA-Z\d]+)\s*((?:\[[a-zA-Z][a-zA-Z\d]+(?:\.\.\.)?\])|(?:<[a-zA-Z][a-zA-Z\d]+(?:\.\.\.)?>))?\s*$)");
         std::smatch res;
         if(!std::regex_search(nameAndArg, res, reg)) return nullptr;
-        // std::cout << res.str(0) << res.str(1) << res.str(2) << res.str(3) << res.str(4) << res.str(5) << std::endl;
         String name = res.str(1);
         String arg = res.str(2);
-        // std::cout << "name: " << name << ", arg: " << arg << std::endl;
         Command* cmd = (new Command(name, pLogger))->description(desc)->argument(arg);
 
         addCommand(cmd);
@@ -297,17 +289,20 @@ public:
     {
         if(!command)
         {
-            *pLogger << "[error]:" << "add command failed, command is null";
+            if(pLogger) pLogger->debug(String("error:") + String("add command failed, command is null"));
             return this;
         }
 
         if(findCommand(command->commandName))
         {
-            *pLogger << "[error]:" << "add command failed, command " << command->commandName.c_str() << "already exists";
+            if(pLogger) pLogger->debug(String("[error]:") + String("add command failed, command ") + command->commandName + String(" already exists"));
             return this;
         }
 
         command->parentCommand = this;
+        command->versionOption = versionOption;
+        command->helpOption = helpOption;
+
         subCommands.push_back(command);
         return this;
     };
@@ -331,7 +326,7 @@ public:
         Option* opt = Option::create(flag,pLogger);
         if(!opt)
         {
-            *pLogger << "[error]:" << "option " << flag.c_str() << " create failed";
+            if(pLogger) pLogger->debug(String("[error]:") + String("option ") + flag + String(" create failed"));
             return this;
         }
 
@@ -346,16 +341,21 @@ public:
     {
         if(!cb)
         {
-            *pLogger << "[error]:" << "action callback is null";
+            if(pLogger) pLogger->debug(String("[error]:") + String("action callback is null"));
         }
 
         actionCallback = cb;
         return this;
     }
 
+    /**
+     * @param argc 
+     * @param argv 
+     * @param index 开始解析的索引，默认从1开始，0为命令本身
+     */
     void parse(int argc, char** argv, int index = 1)
     {
-        Vector<String> args;
+        Vector<Variant> args;
         Map<String, Variant> opts;
 
         int cur = index;
@@ -369,7 +369,7 @@ public:
         
 
         auto parseMuiltOptionAlias = [&](const String& alias){
-            // std::cout << "alias: " << alias << std::endl;
+            if(pLogger) pLogger->debug(String("parse multi option alias: ") + alias);
             for(auto it = alias.begin(); it != alias.end(); it++)
             {
                 char a[2];
@@ -378,29 +378,29 @@ public:
                 Option* opt = findOptionByAlias(a);
                 if(!opt)
                 {
-                    *pLogger << "[warn]:" << "option alias " << a << " not found\n";
+                    if(pLogger) pLogger->debug(String("warn:") + String("option alias ") + a + String(" not found\n"));
                     continue;
                 }
                 if(opt->valueIsRequired)
                 {
-                    *pLogger << "[error]:" << "option: " << opt->name << " value is required\n";
+                    if(pLogger) pLogger->error(String("option: ") + opt->name + String(" value is required"));
                     return false;
                 }
                 opts[opt->name] = Variant();
-                std::cout << "alias: " << *it << std::endl;
+                if(pLogger) pLogger->debug(String("parse multi option alias: ") + a + String(" success"));
             }
             cur++;
             return true;
         };
         auto parseOptionName = [&](const String& aliasOrName, const String& value = String()){
-            // std::cout << "aliasOrName: " << aliasOrName << ", value: " << value << std::endl;
+            if(pLogger) pLogger->debug(String("parse option name: ") + aliasOrName + String(" value: ") + value);
             Option* opt = findOptionByAlias(aliasOrName);
             if(!opt)
             {
                 opt = findOption(aliasOrName);
                 if(!opt)
                 {
-                    *pLogger << "[warn]:" << "option " << aliasOrName << " not found\n";
+                    if(pLogger) pLogger->debug(String("[warn]:") + String("option ") + aliasOrName + String(" not found\n"));
                     return true;
                 }
             }
@@ -459,20 +459,27 @@ public:
             return true;
         };
         auto parseCommand = [&](const String& name){
-            cur++;
-            std::cout << "command: " << name << std::endl;
+            if(pLogger) pLogger->debug(String("parse command: ") + name);
+            Command* command = findCommand(name);
+            if(!command)
+            {
+                if(pLogger) pLogger->warn(String("command ") + name + String(" not found"));
+                ++cur;
+                return false;
+            }
+
+            command->parse(argc, argv, ++cur);
             return true;
         };
         auto parseArgument = [&](const String& arg){
             cur++;
-            std::cout << "arg: " << arg << std::endl;
+            if(pLogger) pLogger->debug(String("parse argument: ") + arg);
             return true;
         };
         while(cur < argc)
         {
-            // std::cout << cur<< std::endl;
             String arg = argv[cur];
-            // std::cout << cur << " " << arg << std::endl;
+            if(pLogger) pLogger->debug(String("parse arg: ") + arg);
             std::smatch res;
             if(std::regex_search(arg, res, optionAliasReg))
             {
@@ -488,25 +495,25 @@ public:
 
             if(std::regex_search(arg, res, commandReg))
             {
-                parseCommand(res.str(1));
                 // 如果解析到子命令直接就使用子命令的解析了，不再继续当前的解析了
-                return;
+                if(parseCommand(res.str(1))) return;
+                // 否则继续解析
+                continue;
             }
 
             if(parseArgument(arg)) continue;
             return;
         }
 
-        // std::cout << "end..."<< std::endl;
         if(opts.find(versionOption->name) != opts.end())
         {
-            std::cout << version() << std::endl;
+            if(pLogger) pLogger->print(version());
             return;
         }
 
         if(opts.find(helpOption->name) != opts.end())
         {
-            std::cout << helpText() << std::endl;
+            if(pLogger) pLogger->print(helpText());
             return;
         }
 
@@ -533,15 +540,10 @@ private:
     class Option;
     Option* findOption(const String& name)
     {
-        if(name == versionOption->name)
-        {
-            return versionOption;
-        }
-        if(name == helpOption->name)
-        {
-            return helpOption;
-        }
-        for(const auto opt : options)
+        Vector<Option*> opts = options;
+        opts.push_back(versionOption);
+        opts.push_back(helpOption);
+        for(const auto opt : opts)
         {
             if(opt->name == name)
             {
@@ -552,15 +554,10 @@ private:
     }
     Option* findOptionByAlias(const String& alias)
     {
-        if(alias == versionOption->alias)
-        {
-            return versionOption;
-        }
-        if(alias == helpOption->alias)
-        {
-            return helpOption;
-        }
-        for(const auto opt : options)
+        Vector<Option*> opts = options;
+        opts.push_back(versionOption);
+        opts.push_back(helpOption);
+        for(const auto opt : opts)
         {
             if(opt->alias == alias)
             {
@@ -594,12 +591,13 @@ private:
                                                  
                 bool multiValue = !res.str(4).empty() || !res.str(6).empty() || !res.str(11).empty() || !res.str(13).empty();
                 bool valueIsRequired = !res.str(5).empty() || !res.str(12).empty();
-                // std::cout  << "alias: " << alias  << std::endl
-                //             << " name: " << name << std::endl 
-                //             << " valueName: " << valueName << std::endl
-                //             << "multiValue: " << multiValue << std::endl
-                //             << " valueIsRequired: " << valueIsRequired << std::endl;
-                // *logger << "create option:" << flag;
+
+                if(logger) logger->debug(String("create option: ") 
+                    + String("alias: ") + alias 
+                    + String(" name: ") + name 
+                    + String(" valueName: ") + valueName 
+                    + String(" multiValue: ") + std::to_string(multiValue) 
+                    + String(" valueIsRequired: ") + std::to_string(valueIsRequired));
 
                 Option* opt = new Option();
                 opt->name = name;
@@ -630,7 +628,10 @@ private:
                     return nullptr;
                 }
                 String argName = !res.str(1).empty() ? res.str(1) : !res.str(3).empty() ? res.str(3) : "";
-                // std::cout << name << "argName: " << argName << std::endl;
+                if(logger) logger->debug(String("create argument: ") 
+                    + String("name: ") + argName 
+                    + String(" isMultiValue: ") + std::to_string(!res.str(2).empty() || !res.str(4).empty()) 
+                    + String(" valueIsRequired: ") + std::to_string(!res.str(1).empty() || !res.str(3).empty()));
 
                 Argument* arg = new Argument;
                 arg->name = argName;
