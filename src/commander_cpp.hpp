@@ -333,6 +333,11 @@ public:
         return this;
     }
 
+    /**
+     * @param argc 
+     * @param argv 
+     * @param index 开始解析的索引，默认从1开始，0为命令本身
+     */
     void parse(int argc, char** argv, int index = 1)
     {
         Vector<Variant> args;
@@ -354,7 +359,7 @@ public:
                 }
                 if(opt->valueIsRequired)
                 {
-                    if(pLogger) pLogger->debug(String("error:") + String("option: ") + opt->name + String(" value is required\n"));
+                    if(pLogger) pLogger->error(String("option: ") + opt->name + String(" value is required"));
                     return false;
                 }
                 opts[opt->name] = Variant();
