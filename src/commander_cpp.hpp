@@ -1,3 +1,6 @@
+#ifndef COMMANDER_CPP_HPP
+#define COMMANDER_CPP_HPP
+
 #include <functional>
 #include <vector>
 #include <map>
@@ -337,6 +340,10 @@ public:
         return this;
     };
 
+    /**
+     * @brief 设置命令的动作回调函数
+     * @param cb 动作回调函数，参数为参数列表和选项列表
+     */
     virtual Command* action(const Action& cb)
     {
         if(!cb)
@@ -464,7 +471,6 @@ public:
             if(!command)
             {
                 if(pLogger) pLogger->warn(String("command ") + name + String(" not found"));
-                ++cur;
                 return false;
             }
 
@@ -474,6 +480,25 @@ public:
         auto parseArgument = [&](const String& arg){
             cur++;
             if(pLogger) pLogger->debug(String("parse argument: ") + arg);
+
+            std::smatch res;
+            if(std::regex_search(arg, res, boolValueReg))
+            {
+                args.push_back(Variant(res.str(1).empty()));
+            }
+            else if(std::regex_search(arg, res, intValueReg))
+            {
+                args.push_back(Variant(std::stoi(arg)));
+            }
+            else if(std::regex_search(arg, res, doubleValueReg))
+            {
+                args.push_back(Variant(std::stod(arg)));
+            }
+            else
+            {
+                args.push_back(Variant(arg));
+            }
+
             return true;
         };
         while(cur < argc)
@@ -481,6 +506,14 @@ public:
             String arg = argv[cur];
             if(pLogger) pLogger->debug(String("parse arg: ") + arg);
             std::smatch res;
+
+            if(std::regex_search(arg, res, commandReg))
+            {
+                // 如果解析到子命令直接就使用子命令的解析了，不再继续当前的解析了
+                if(parseCommand(res.str(1))) return;
+                // 否则继续解析
+            }
+
             if(std::regex_search(arg, res, optionAliasReg))
             {
                 if(parseMuiltOptionAlias(res.str(1))) continue;
@@ -491,14 +524,6 @@ public:
             {
                 if(parseOptionName(!res.str(1).empty() ? res.str(1) : res.str(2), res.str(3))) continue;
                 return;
-            }
-
-            if(std::regex_search(arg, res, commandReg))
-            {
-                // 如果解析到子命令直接就使用子命令的解析了，不再继续当前的解析了
-                if(parseCommand(res.str(1))) return;
-                // 否则继续解析
-                continue;
             }
 
             if(parseArgument(arg)) continue;
@@ -662,3 +687,5 @@ private:
     Logger* pLogger;
 };
 }
+
+#endif // COMMANDER_CPP_HPP
