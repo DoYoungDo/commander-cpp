@@ -11,7 +11,8 @@
 namespace COMMANDER_CPP
 {
 using String = std::string;
-using Variant = std::variant<std::monostate, int, double, String, bool, std::vector<std::variant<int, double, String, bool>>>;
+using VariantBase = std::variant<std::monostate,int, double, String, bool>;
+using Variant = std::variant<std::monostate, int, double, String, bool, std::vector<VariantBase>>;
 template<typename K, typename V>
 using Map = std::map<K,V>;
 template<typename T>
@@ -99,7 +100,7 @@ public:
         return this;
     }
     virtual String name(){return commandName;}
-    
+
     virtual Command* version(const String& v, const String& flag = String(), const String& desc = String())
     {
         // 函数结束时调用
@@ -380,8 +381,56 @@ public:
         std::regex intValueReg(R"(^-?\d+$)");
         std::regex doubleValueReg(R"(^-?\d+\.\d+$)");
         std::regex boolValueReg(R"(^(?:(true)|false)$)");
-        
 
+        auto getBaseValue = [=](const String &text)
+        {
+            if (text.empty())
+            {
+                return VariantBase();
+            }
+            std::smatch res;
+            if (std::regex_search(text, res, intValueReg))
+            {
+                return VariantBase(std::stoi(text));
+            }
+
+            if (std::regex_search(text, res, doubleValueReg))
+            {
+                return VariantBase(std::stod(text));
+            }
+
+            if (std::regex_search(text, res, boolValueReg))
+            {
+                return VariantBase(res.str(1).empty());
+            }
+
+            return VariantBase(text);
+        };
+
+        auto getValue = [=](const String &text)
+        {
+            if (text.empty())
+            {
+                return Variant();
+            }
+            std::smatch res;
+            if (std::regex_search(text, res, intValueReg))
+            {
+                return Variant(std::stoi(text));
+            }
+
+            if (std::regex_search(text, res, doubleValueReg))
+            {
+                return Variant(std::stod(text));
+            }
+
+            if (std::regex_search(text, res, boolValueReg))
+            {
+                return Variant(res.str(1).empty());
+            }
+
+            return Variant(text);
+        };
         auto parseMuiltOptionAlias = [&](const String& alias){
             if(pLogger) pLogger->debug(String("parse multi option alias: ") + alias);
             for(auto it = alias.begin(); it != alias.end(); it++)
@@ -420,33 +469,39 @@ public:
             }
             Variant v;
             if(opt->valueIsRequired)
-            {
-                auto getValue = [=](const String& text){
-                    if(text.empty())
-                    {
-                        return Variant();
-                    }
-                    std::smatch res;
-                    if(std::regex_search(text, res, intValueReg))
-                    {
-                        return Variant(std::stoi(text));
-                    }
-                    
-                    if(std::regex_search(text, res, doubleValueReg))
-                    {
-                        return Variant(std::stod(text));
-                    }
-                    
-                    if(std::regex_search(text, res, boolValueReg))
-                    {
-                        return Variant(res.str(1).empty());
-                    }
-
-                    return Variant(text);
-                };             
+            {           
                 if(opt->multiValue)
                 {
+                    std::vector<VariantBase> mv;
+                    if (!value.empty())
+                    {
+                        mv.push_back(getBaseValue(value));
+                    }
+                    else
+                    {
+                        while (++cur < argc)
+                        {
+                            String arg = argv[cur];
+                            std::smatch res;
+                            if (std::regex_search(arg, res, optionAliasReg) || std::regex_search(arg, res, optionReg))
+                            {
+                                --cur;
+                                break;
+                            }
+                            auto nv = getBaseValue(arg);
+                            if(std::holds_alternative<std::monostate>(nv)) continue;
 
+                            mv.push_back(nv);
+                        }
+                    }
+
+                    if(mv.size() == 0)
+                    {
+                        pLogger->error(String("option: ") + opt->name + String("need a value at lest, but got empty."));
+                        return false;
+                    }
+
+                    v = mv;
                 }
                 else
                 {
@@ -488,24 +543,7 @@ public:
             cur++;
             if(pLogger) pLogger->debug(String("parse argument: ") + arg);
 
-            std::smatch res;
-            if(std::regex_search(arg, res, boolValueReg))
-            {
-                args.push_back(Variant(res.str(1).empty()));
-            }
-            else if(std::regex_search(arg, res, intValueReg))
-            {
-                args.push_back(Variant(std::stoi(arg)));
-            }
-            else if(std::regex_search(arg, res, doubleValueReg))
-            {
-                args.push_back(Variant(std::stod(arg)));
-            }
-            else
-            {
-                args.push_back(Variant(arg));
-            }
-
+            args.push_back(getValue(arg));
             return true;
         };
         while(cur < argc)
