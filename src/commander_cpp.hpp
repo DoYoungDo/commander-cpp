@@ -93,6 +93,13 @@ public:
     }
 
 public:
+    virtual Command* name(const String& name)
+    {
+        commandName = name;
+        return this;
+    }
+    virtual String name(){return commandName;}
+    
     virtual Command* version(const String& v, const String& flag = String(), const String& desc = String())
     {
         // 函数结束时调用
