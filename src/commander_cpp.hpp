@@ -50,7 +50,7 @@ public:
 class Command
 {
 public:
-    Command(const String& name, Logger* logger = new LoggerDefaultImpl())
+    Command(const String& name = String(), Logger* logger = new LoggerDefaultImpl())
         : commandName(name)
         , actionCallback(nullptr)
         , pLogger(logger)
@@ -197,9 +197,15 @@ public:
             }
 
             std::stringstream out;
-            out << "Usage: " << usageText << std::endl
-                << std::endl << description() << std::endl;
-            
+            out << "Usage: " << usageText << std::endl;
+
+            String descText = description();
+            if (descText.empty())
+            {
+                out << std::endl
+                    << description() << std::endl;
+            }
+
             if(!arguments.empty())
             {
                 out << std::endl << "Arguments:" << std::endl;
@@ -209,15 +215,17 @@ public:
                 }
             }
 
-            if(!options.empty())
+            do
             {
-                out << std::endl << "Options:" << std::endl;
-                auto getOptionText = [&out](Option* opt){
+                out << std::endl
+                    << "Options:" << std::endl;
+                auto getOptionText = [&out](Option *opt)
+                {
                     out << "  " << (opt->alias.empty() ? "" : ("-" + opt->alias + ", ")) << ("--" + opt->name);
-                    if(!opt->valueName.empty()) out << " " << (opt->multiValue ? "<" + opt->valueName + (opt->valueIsRequired ? "..." : "") + ">" : 
-                                        "[" + opt->valueName + (opt->valueIsRequired ? "..." : "") + "]");
+                    if (!opt->valueName.empty())
+                        out << " " << (opt->multiValue ? "<" + opt->valueName + (opt->valueIsRequired ? "..." : "") + ">" : "[" + opt->valueName + (opt->valueIsRequired ? "..." : "") + "]");
                     out << "  " << opt->desc;
-                    if(!opt->valueName.empty())
+                    if (!opt->valueName.empty())
                     {
                         String defaultValue;
                         do
@@ -254,21 +262,22 @@ public:
                             out << " (default: " << defaultValue << ")";
                     }
 
-                    out<< std::endl;
+                    out << std::endl;
                 };
 
                 getOptionText(versionOption);
-                for(const auto opt : options)
+                for (const auto opt : options)
                 {
                     getOptionText(opt);
                 }
                 getOptionText(helpOption);
-            }
+            } while (false);
 
-            if(!subCommands.empty())
+            if (!subCommands.empty())
             {
-                out << std::endl << "Commands:" << std::endl;
-                for(const auto cmd : subCommands)
+                out << std::endl
+                    << "Commands:" << std::endl;
+                for (const auto cmd : subCommands)
                 {
                     out << "  " << getUsageText(cmd) << "  " << cmd->description() << std::endl;
                 }
@@ -729,7 +738,8 @@ private:
     Vector<Command*> subCommands;
     Vector<Argument*> arguments;
 
-    Logger* pLogger;
+protected:
+    Logger *pLogger;
 };
 }
 
