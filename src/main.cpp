@@ -4,63 +4,114 @@
 
 using namespace COMMANDER_CPP;
 
-class LoggerImpl1 : public Logger
+struct TestResult
 {
-public:
-    // virtual Logger *debug(const String &msg) override
-    // {
-    //     return print("[debug]: " + msg);
-    // };
-    // virtual Logger *warn(const String &msg) override
-    // {
-    //     return print("[warn]: " + msg);
-    // };
-    // virtual Logger *error(const String &msg) override
-    // {
-    //     return print("[error]: " + msg);
-    // };
-    virtual Logger *print(const String &msg) override
-    {
-        std::cout << msg << std::endl;
-        return this;
-    };
+    bool result;
+    std::string errMsg;
 };
 
-void test1(int argc, char **argv)
+class Test
 {
-    Command* cmd = (new Command("testCommand", new LoggerImpl1()))
-    ->version("0.0.1")
-    ->description("测试命令行解析。")
-    ->argument("<files...>", "输入文件")
-    ->option("-o --outDir <dir>", "输出目录", "./out")
-    ->option("-n --names [names...]", "指定名称，和参数顺序一致")
-    ->option("-s --sourceMap", "生成sourceMap", 123)
-    ->option("--reuse", "重用生成文件", false)
-    ->option("--generatewithVersionName <name>", "生成名称包含版本名称") // 补丁参数
-    ->action([](std::vector<Variant> args, std::map<std::string, Variant> opts) {
-        std::cout << "test1 action" << std::endl;
+public:
+    virtual std::string id() = 0;
+    virtual TestResult test() = 0;
+};
+
+class VersionTest : public Command, public Test
+{
+public:
+    class LoggerImpl : public Logger
+    {
+    public:
+        virtual Logger *print(const String &msg) override
+        {
+            if(msg != "1.2.3"){
+                this->result = {false, "version is not 1.2.3"};
+            }
+            return this;
+        };
+        TestResult result = {true, ""};
+    };
+
+    VersionTest() : Command("",new LoggerImpl())
+    {
+        this->name(id())
+            ->version("1.2.3");
+    }
+    virtual std::string id() override { return "VersionTest"; }
+    virtual TestResult test() override
+    {
+        char* argv[] = {"testCommand", "--version"};
+        this->parse(2, argv);
+        char* argv1[] = {"testCommand", "--V"};
+        this->parse(2, argv1);
+
+        return static_cast<LoggerImpl*>(this->pLogger)->result;
+    }
+};
+
+class DescriptionTest : public Command, public Test
+{
+public:
+    class LoggerImpl : public Logger
+    {
+    public:
+        virtual Logger *print(const String &msg) override
+        {
+            // std::cout << msg << std::endl;
+            std::smatch res;
+            std::regex reg(R"(测试命令行解析。)");
+            if(!std::regex_search(msg, res, reg)){
+                this->result = {false, "description is not: 测试命令行解析。"};
+            }
+            return this;
+        };
+        TestResult result = {true, ""};
+    };
+
+    DescriptionTest() : Command("",new LoggerImpl())
+    {
+        this->name(id())
+            ->description("测试命令行解析。");
+    }
+    virtual std::string id() override { return "DescriptionTest"; }
+    virtual TestResult test() override
+    {
+        char* argv[] = {"testCommand"};
+        this->parse(1, argv);
+        char* argv1[] = {"testCommand", "-h"};
+        this->parse(2, argv1);
+        char* argv2[] = {"testCommand", "--help"};
+        this->parse(2, argv2);
+
+        return static_cast<LoggerImpl *>(this->pLogger)->result;
+    }
+};
+
+int main(int argc, char **argv)
+{
+    Command("test").option("-i --display-success-info", "显示信息")
+    ->action([](Vector<Variant> args,Map<String, Variant> opts){
+        Test *tests[] = {
+            new VersionTest(),
+            new DescriptionTest()};
+
+        for (int i = 0; i < std::size(tests); i++)
+        {
+            TestResult res = tests[i]->test();
+            if (!res.result)
+            {
+                std::cout << "test :" << tests[i]->id() << " failed: " << res.errMsg << std::endl;
+            }
+            else
+            {
+                if(opts.find("display-success-info") != opts.end())
+                {
+                    std::cout << "test :" << tests[i]->id() << " passed" << std::endl;
+                }
+            }
+        } 
     })
-    ;
-    cmd->command("sub")
-        ->description("子命令")
-        ->option("-s --sourceMap", "生成sourceMap")
-        ->argument("<subFiles...>", "子命令输入文件")
-        ->action([](std::vector<Variant> args, std::map<std::string, Variant> opts) {
-            std::cout << "sub action" << std::endl;
-        })
-    ;
-    cmd->command("sub1 [sub1Files...]", "子命令")
-        ->description("子命令1")
-        ->action([](std::vector<Variant> args, std::map<std::string, Variant> opts) {
-            std::cout << "sub1 action" << std::endl;
-        })
-    ;
-
-    cmd->parse(argc, argv)
-    ;
-}
-
-int main(int argc, char **argv) {
-    test1(argc, argv);
+    ->parse(argc, argv);
     return 0;
 }

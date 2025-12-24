@@ -1,6 +1,7 @@
 #ifndef COMMANDER_CPP_HPP
 #define COMMANDER_CPP_HPP
 
+#include <iostream>
 #include <functional>
 #include <vector>
 #include <map>
