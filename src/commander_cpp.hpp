@@ -201,7 +201,7 @@ public:
             out << "Usage: " << usageText << std::endl;
 
             String descText = description();
-            if (descText.empty())
+            if (!descText.empty())
             {
                 out << std::endl
                     << description() << std::endl;
