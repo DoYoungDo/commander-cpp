@@ -239,17 +239,398 @@ public:
 class ArgumentTest : public Command, public Test
 {
 public:
-    ArgumentTest() : Command()
+    ArgumentTest() : Command("", new TestLogger())
     {
         this->name(id())
-        ->argument("<from>", "from argument")
-        ->argument("[to...]", "to arguments");
+            ->argument("<from>", "from argument")
+            ->argument("[to...]", "to arguments");
     }
     virtual std::string id() override { return "ArgumentTest"; }
     virtual TestResult test() override
     {
-        TestResult result = {false, ""};
-        // TODO
+        std::vector<TestResult> results;
+        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+
+        do
+        {
+            this->action([&](Vector<Variant> args, Map<String, Variant> opts)
+                         {
+                if(args.size() < 1){
+                    results.push_back(TestResult{false, "缺少必需的from参数"});
+                    return;
+                }
+                
+                auto from = std::get_if<String>(&args[0]);
+                if(!from || *from != "source"){
+                    results.push_back(TestResult{false, "from参数值不是预期值:source"});
+                    return;
+                }
+
+                if(args.size() > 1){
+                    auto to = std::get_if<String>(&args[1]);
+                    if(!to || *to != "target1"){
+                        results.push_back(TestResult{false, "to参数值不是预期值:target1"});
+                        return;
+                    }
+                }
+
+                results.push_back(TestResult{true, ""}); });
+
+            char *argv[] = {"testCommand", "source", "target1"};
+            this->parse(3, argv);
+        } while (false);
+
+        do
+        {
+            this->action([&](Vector<Variant> args, Map<String, Variant> opts)
+                         {
+                if(args.size() < 1){
+                    results.push_back(TestResult{false, "缺少必需的from参数"});
+                    return;
+                }
+                
+                auto from = std::get_if<String>(&args[0]);
+                if(!from || *from != "source"){
+                    results.push_back(TestResult{false, "from参数值不是预期值:source"});
+                    return;
+                }
+
+                if(args.size() > 2){
+                    auto to2 = std::get_if<String>(&args[2]);
+                    if(!to2 || *to2 != "target2"){
+                        results.push_back(TestResult{false, "to参数值不是预期值:target2"});
+                        return;
+                    }
+                }
+
+                results.push_back(TestResult{true, ""}); });
+
+            char *argv[] = {"testCommand", "source", "target1", "target2"};
+            this->parse(4, argv);
+        } while (false);
+
+        TestResult result({true, ""});
+        for (auto res : results)
+        {
+            result = result.merge(res);
+        }
+        return result;
+    }
+};
+
+class SubCommandTest : public Command, public Test
+{
+public:
+    SubCommandTest() : Command("", new TestLogger())
+    {
+        this->name(id())
+            ->description("测试子命令功能");
+    }
+    virtual std::string id() override { return "SubCommandTest"; }
+    virtual TestResult test() override
+    {
+        std::vector<TestResult> results;
+        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+
+        // 测试子命令解析 - add 命令
+        do
+        {
+            bool addCommandExecuted = false;
+            this->command("add <file>", "添加文件")
+                ->action([&](Vector<Variant> args, Map<String, Variant> opts)
+                         {
+                    if(args.size() > 0){
+                        auto file = std::get_if<String>(&args[0]);
+                        if(file && *file == "test.txt"){
+                            addCommandExecuted = true;
+                        }
+                    } });
+
+            char *argv[] = {"testCommand", "add", "test.txt"};
+            this->parse(3, argv);
+
+            results.push_back(addCommandExecuted ? TestResult{true, ""} : TestResult{false, "add子命令未正确执行"});
+        } while (false);
+
+        // 测试子命令解析 - remove 命令
+        do
+        {
+            bool removeCommandExecuted = false;
+            this->command("remove <file>", "删除文件")
+                ->action([&](Vector<Variant> args, Map<String, Variant> opts)
+                         {
+                    if(args.size() > 0){
+                        auto file = std::get_if<String>(&args[0]);
+                        if(file && *file == "test.txt"){
+                            removeCommandExecuted = true;
+                        }
+                    } });
+
+            char *argv[] = {"testCommand", "remove", "test.txt"};
+            this->parse(3, argv);
+
+            results.push_back(removeCommandExecuted ? TestResult{true, ""} : TestResult{false, "remove子命令未正确执行"});
+        } while (false);
+
+        // 测试未知子命令的错误处理
+        do
+        {
+            bool hasWarn = false;
+            logger->checkWarn = [&](const std::string &msg)
+            {
+                if (msg.find("unknown identifier") != std::string::npos)
+                {
+                    hasWarn = true;
+                }
+            };
+
+            char *argv[] = {"testCommand", "unknown"};
+            this->parse(2, argv);
+
+            results.push_back(hasWarn ? TestResult{true, ""} : TestResult{false, "未正确报告未知子命令的警告"});
+        } while (false);
+
+        TestResult result({true, ""});
+        for (auto res : results)
+        {
+            result = result.merge(res);
+        }
+        return result;
+    }
+};
+
+class DefaultValueTest : public Command, public Test
+{
+public:
+    DefaultValueTest() : Command("", new TestLogger())
+    {
+        this->name(id())
+            ->description("测试默认值功能")
+            ->option("-n --number <num>", "数字选项", 42)
+            ->option("-b --boolean", "布尔选项", true)
+            ->option("-s --string <text>", "字符串选项", "default")
+            ->argument("[optional]", "可选参数", "optional_default");
+    }
+    virtual std::string id() override { return "DefaultValueTest"; }
+    virtual TestResult test() override
+    {
+        std::vector<TestResult> results;
+        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+
+        this->action([&](Vector<Variant> args, Map<String, Variant> opts)
+                     {
+            // 测试默认值
+            auto numberIt = opts.find("number");
+            if(numberIt != opts.end()){
+                auto num = std::get_if<int>(&numberIt->second);
+                if(num && *num == 42){
+                    results.push_back(TestResult{true, ""});
+                } else {
+                    results.push_back(TestResult{false, "数字默认值不正确"});
+                }
+            }
+
+            auto booleanIt = opts.find("boolean");
+            if(booleanIt != opts.end()){
+                auto b = std::get_if<bool>(&booleanIt->second);
+                if(b && *b == true){
+                    results.push_back(TestResult{true, ""});
+                } else {
+                    results.push_back(TestResult{false, "布尔默认值不正确"});
+                }
+            }
+
+            auto stringIt = opts.find("string");
+            if(stringIt != opts.end()){
+                auto s = std::get_if<String>(&stringIt->second);
+                if(s && *s == "default"){
+                    results.push_back(TestResult{true, ""});
+                } else {
+                    results.push_back(TestResult{false, "字符串默认值不正确"});
+                }
+            }
+
+            if(args.size() > 0){
+                auto arg = std::get_if<String>(&args[0]);
+                if(arg && *arg == "optional_default"){
+                    results.push_back(TestResult{true, ""});
+                } else {
+                    results.push_back(TestResult{false, "参数默认值不正确"});
+                }
+            } });
+
+        char *argv[] = {"testCommand"};
+        this->parse(1, argv);
+
+        TestResult finalResult({true, ""});
+        for (auto res : results)
+        {
+            finalResult = finalResult.merge(res);
+        }
+        return finalResult;
+    }
+};
+
+class MultiValueOptionTest : public Command, public Test
+{
+public:
+    MultiValueOptionTest() : Command("", new TestLogger())
+    {
+        this->name(id())
+            ->description("测试多值选项")
+            ->option("-f --files <files...>", "文件列表");
+    }
+    virtual std::string id() override { return "MultiValueOptionTest"; }
+    virtual TestResult test() override
+    {
+        std::vector<TestResult> results;
+        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+
+        this->action([&](Vector<Variant> args, Map<String, Variant> opts)
+                     {
+            auto filesIt = opts.find("files");
+            if(filesIt == opts.end()){
+                results.push_back(TestResult{false, "未找到files选项"});
+                return;
+            }
+
+            auto filesVec = std::get_if<std::vector<VariantBase>>(&filesIt->second);
+            if(!filesVec){
+                results.push_back(TestResult{false, "files选项不是多值类型"});
+                return;
+            }
+
+            if(filesVec->size() != 3){
+                results.push_back(TestResult{false, "files选项值数量不正确"});
+                return;
+            }
+
+            std::vector<std::string> expected = {"file1.txt", "file2.txt", "file3.txt"};
+            for(size_t i = 0; i < filesVec->size(); i++){
+                auto file = std::get_if<String>(&(*filesVec)[i]);
+                if(!file || *file != expected[i]){
+                    results.push_back(TestResult{false, "文件值不匹配: " + expected[i]});
+                    return;
+                }
+            }
+
+            results.push_back(TestResult{true, ""}); });
+
+        char *argv[] = {"testCommand", "-f", "file1.txt", "file2.txt", "file3.txt"};
+        this->parse(5, argv);
+
+        TestResult result({true, ""});
+        for (auto res : results)
+        {
+            result = result.merge(res);
+        }
+        return result;
+    }
+};
+
+class ErrorHandlingTest : public Command, public Test
+{
+public:
+    ErrorHandlingTest() : Command("", new TestLogger())
+    {
+        this->name(id())
+            ->description("测试错误处理")
+            ->option("-r --required <value>", "必需选项");
+    }
+    virtual std::string id() override { return "ErrorHandlingTest"; }
+    virtual TestResult test() override
+    {
+        std::vector<TestResult> results;
+        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+
+        // 测试缺少必需选项的错误
+        do
+        {
+            bool hasError = false;
+            logger->checkError = [&](const std::string &msg)
+            {
+                if (msg.find("need a value") != std::string::npos)
+                {
+                    hasError = true;
+                }
+            };
+
+            char *argv[] = {"testCommand", "-r"};
+            this->parse(2, argv);
+
+            results.push_back(hasError ? TestResult{true, ""} : TestResult{false, "未正确报告缺少必需值的错误"});
+        } while (false);
+
+        // 测试未知选项的错误
+        do
+        {
+            bool hasWarn = false;
+            logger->checkWarn = [&](const std::string &msg)
+            {
+                if (msg == "unknown option: unknown-option")
+                {
+                    hasWarn = true;
+                }
+            };
+
+            char *argv[] = {"testCommand", "--unknown-option"};
+            this->parse(2, argv);
+
+            results.push_back(hasWarn ? TestResult{true, ""} : TestResult{false, "未正确报告未知选项的警告"});
+        } while (false);
+
+        TestResult result({true, ""});
+        for (auto res : results)
+        {
+            result = result.merge(res);
+        }
+        return result;
+    }
+};
+
+class ComplexOptionTest : public Command, public Test
+{
+public:
+    ComplexOptionTest() : Command("", new TestLogger())
+    {
+        this->name(id())
+            ->description("测试复杂选项组合")
+            ->option("-d --debug", "调试模式", false)
+            ->option("-v --verbose", "详细模式", false);
+    }
+    virtual std::string id() override { return "ComplexOptionTest"; }
+    virtual TestResult test() override
+    {
+        std::vector<TestResult> results;
+        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+
+        this->action([&](Vector<Variant> args, Map<String, Variant> opts)
+                     {
+            // 测试布尔选项
+            auto debugIt = opts.find("debug");
+            if(debugIt != opts.end()){
+                auto debug = std::get_if<bool>(&debugIt->second);
+                if(debug && *debug == true){
+                    results.push_back(TestResult{true, ""});
+                }
+            }
+
+            auto verboseIt = opts.find("verbose");
+            if(verboseIt != opts.end()){
+                auto verbose = std::get_if<bool>(&verboseIt->second);
+                if(verbose && *verbose == true){
+                    results.push_back(TestResult{true, ""});
+                }
+            } });
+
+        char *argv[] = {"testCommand", "-abc", "--debug", "--verbose"};
+        this->parse(4, argv);
+
+        TestResult result({true, ""});
+        for (auto res : results)
+        {
+            result = result.merge(res);
+        }
         return result;
     }
 };
@@ -262,7 +643,12 @@ int main(int argc, char **argv)
             new VersionTest(),
             new DescriptionTest(),
             new OptionTest(),
-            // new ArgumentTest()
+            new ArgumentTest(),
+            new SubCommandTest(),
+            new DefaultValueTest(),
+            new MultiValueOptionTest(),
+            new ErrorHandlingTest(),
+            new ComplexOptionTest()
         };
 
         for (int i = 0; i < std::size(tests); i++)
