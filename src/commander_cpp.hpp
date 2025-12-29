@@ -457,6 +457,7 @@ public:
                 if(opt->valueIsRequired)
                 {
                     if(pLogger) pLogger->error(String("option: ") + opt->name + String(" value is required"));
+                    ++cur;
                     return false;
                 }
                 opts[opt->name] = Variant();
@@ -470,7 +471,8 @@ public:
             if (!opt)
             {
                 if (pLogger)
-                    pLogger->debug(String("warn:") + String("option alias ") + a + String(" not found\n"));
+                    pLogger->warn(String("warn:") + String("option alias ") + a + String(" not found\n"));
+                ++cur;
                 return true;
             }
             if (opt->valueIsRequired)
@@ -499,6 +501,7 @@ public:
                     if (mv.size() == 0)
                     {
                         pLogger->error(String("option: ") + opt->name + String("need a value at lest, but got empty."));
+                        ++cur;
                         return false;
                     }
 
@@ -511,6 +514,7 @@ public:
                     if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) || std::regex_search(valueText, res, optionReg))
                     {
                         pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
+                        ++cur;
                         return false;
                     }
 
@@ -537,7 +541,8 @@ public:
                 opt = findOption(aliasOrName);
                 if(!opt)
                 {
-                    if(pLogger) pLogger->debug(String("[warn]:") + String("option ") + aliasOrName + String(" not found\n"));
+                    if(pLogger) pLogger->warn(String("unknown option: ") + aliasOrName);
+                    ++cur;
                     return true;
                 }
             }
@@ -572,6 +577,7 @@ public:
                     if(mv.size() == 0)
                     {
                         pLogger->error(String("option: ") + opt->name + String("need a value at lest, but got empty."));
+                        ++cur;
                         return false;
                     }
 
@@ -584,6 +590,7 @@ public:
                     if(valueText.empty() || std::regex_search(valueText, res, optionAliasReg) || std::regex_search(valueText, res, optionReg))
                     {
                         pLogger->error(String("option: ") + opt->name + String("need a value, but got empty."));
+                        ++cur;
                         return false;   
                     }
 
