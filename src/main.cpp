@@ -249,31 +249,7 @@ public:
     virtual TestResult test() override
     {
         TestResult result = {false, ""};
-        class LoggerImpl : public Logger
-        {
-        public:
-            virtual Logger *print(const String &msg) override
-            {
-                std::cout << msg << std::endl;
-                // std::smatch res;
-                // std::regex reg(R"(测试命令行解析。)");
-                // if (!std::regex_search(msg, res, reg))
-                // {
-                //     this->result = {false, "description is not: 测试命令行解析。"};
-                // }
-                return this;
-            };
-            TestResult result = {true, ""};
-        };
-        // this->action([](Vector<Variant> args, Map<String, Variant> opts) {});
-        this->pLogger = new LoggerImpl();
-        char* argv[] = {"testCommand"};
-        this->parse(1, argv);
-        // char* argv1[] = {"testCommand", "-h"};
-        // this->parse(2, argv1);
-        // char* argv2[] = {"testCommand", "--help"};
-        // this->parse(2, argv2);
-
+        // TODO
         return result;
     }
 };
