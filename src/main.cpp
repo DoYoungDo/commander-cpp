@@ -18,12 +18,23 @@ struct TestResult
     }
 };
 
+inline TestResult mergeAll(const std::vector<TestResult> &vec)
+{
+    TestResult result{true, ""};
+    for (const auto &r : vec)
+    {
+        result = result.merge(r);
+    }
+    return result;
+}
+
 class Test
 {
 public:
     virtual std::string id() = 0;
     virtual TestResult test() = 0;
 };
+
 class TestLogger : public Logger
 {
 public:
@@ -175,7 +186,7 @@ public:
                 // std::cout << msg << std::endl;
                 if (msg == "unknown identifier: otherValue")
                 {
-                    logger->checkError = nullptr;
+                    logger->checkWarn = nullptr;
                     hasError = true;
                 }
             };
@@ -201,38 +212,35 @@ public:
                              auto it = opts.find("mustSimgleOption");
                              if (it == opts.end())
                              {
-                                 results.push_back(TestResult{false, "未解析到option: mustMultiOption"});
+                                 results.push_back(TestResult{false, "未解析到option: mustSimgleOption"});
                                  return;
                              }
 
                              if (!std::holds_alternative<String>(it->second))
                              {
-                                 results.push_back(TestResult{false, "option: mustMultiOption,未解析到值"});
+                                 results.push_back(TestResult{false, "option: mustSimgleOption 未解析到值"});
                                  return;
                              }
-                             
-                             std::string * v = std::get_if<String>(&it->second);
+                            
+                             auto v = std::get_if<String>(&it->second);
                              if (!v)
                              {
-                                 results.push_back(TestResult{false, "option: mustMultiOption 的值不是一个字符串"});
+                                 results.push_back(TestResult{false, "option: mustSimgleOption 的值不是一个字符串"});
                                  return;
                              }
 
                              if(*v != "value")
                              {
-                                 results.push_back(TestResult{false, "option: mustMultiOption 的值不是预期值:value"});
-                             } });
+                                 results.push_back(TestResult{false, "option: mustSimgleOption 的值不是预期值:value"});
+                             }
+                         });
 
             char *argv[] = {"testCommand", "-s", "value"};
             this->parse(3, argv);
         } while (false);
 
 
-        TestResult result({true, ""});
-        for(auto res : results){
-            result = result.merge(res);
-        }
-        return result;
+        return mergeAll(results);
     }
 };
 
@@ -309,12 +317,7 @@ public:
             this->parse(4, argv);
         } while (false);
 
-        TestResult result({true, ""});
-        for (auto res : results)
-        {
-            result = result.merge(res);
-        }
-        return result;
+        return mergeAll(results);
     }
 };
 
@@ -390,12 +393,7 @@ public:
             results.push_back(hasWarn ? TestResult{true, ""} : TestResult{false, "未正确报告未知子命令的警告"});
         } while (false);
 
-        TestResult result({true, ""});
-        for (auto res : results)
-        {
-            result = result.merge(res);
-        }
-        return result;
+        return mergeAll(results);
     }
 };
 
@@ -462,12 +460,7 @@ public:
         char *argv[] = {"testCommand"};
         this->parse(1, argv);
 
-        TestResult finalResult({true, ""});
-        for (auto res : results)
-        {
-            finalResult = finalResult.merge(res);
-        }
-        return finalResult;
+        return mergeAll(results);
     }
 };
 
@@ -519,12 +512,7 @@ public:
         char *argv[] = {"testCommand", "-f", "file1.txt", "file2.txt", "file3.txt"};
         this->parse(5, argv);
 
-        TestResult result({true, ""});
-        for (auto res : results)
-        {
-            result = result.merge(res);
-        }
-        return result;
+        return mergeAll(results);
     }
 };
 
@@ -579,12 +567,7 @@ public:
             results.push_back(hasWarn ? TestResult{true, ""} : TestResult{false, "未正确报告未知选项的警告"});
         } while (false);
 
-        TestResult result({true, ""});
-        for (auto res : results)
-        {
-            result = result.merge(res);
-        }
-        return result;
+        return mergeAll(results);
     }
 };
 
