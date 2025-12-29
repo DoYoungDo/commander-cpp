@@ -656,13 +656,13 @@ int main(int argc, char **argv)
             TestResult res = tests[i]->test();
             if (!res.result)
             {
-                std::cout << "test :" << tests[i]->id() << " 失败: " << res.errMsg << std::endl;
+                std::cout << "测试 :" << tests[i]->id() << " 失败: " << res.errMsg << std::endl;
             }
             else
             {
                 if(opts.find("display-success-info") != opts.end())
                 {
-                    std::cout << "test :" << tests[i]->id() << " 成功" << std::endl;
+                    std::cout << "测试 :" << tests[i]->id() << " 成功" << std::endl;
                 }
             }
         } 
