@@ -443,7 +443,7 @@ public:
         };
         auto parseMuiltOptionAlias = [&](const String& alias){
             if(pLogger) pLogger->debug(String("parse multi option alias: ") + alias);
-            for(auto it = alias.begin(); it != alias.end(); it++)
+            for(auto it = alias.begin(); it != alias.end() - 1; it++)
             {
                 char a[2];
                 a[0] = *it;
@@ -462,6 +462,70 @@ public:
                 opts[opt->name] = Variant();
                 if(pLogger) pLogger->debug(String("parse multi option alias: ") + a + String(" success"));
             }
+
+            char a[2];
+            a[0] = alias.back();
+            a[1] = '\0';
+            Option *opt = findOptionByAlias(a);
+            if (!opt)
+            {
+                if (pLogger)
+                    pLogger->debug(String("warn:") + String("option alias ") + a + String(" not found\n"));
+                return true;
+            }
+            if (opt->valueIsRequired)
+            {
+                Variant v;
+                if (opt->multiValue)
+                {
+                    std::vector<VariantBase> mv;
+
+                    while (++cur < argc)
+                    {
+                        String arg = argv[cur];
+                        std::smatch res;
+                        if (std::regex_search(arg, res, optionAliasReg) || std::regex_search(arg, res, optionReg))
+                        {
+                            --cur;
+                            break;
+                        }
+                        auto nv = getBaseValue(arg);
+                        if (std::holds_alternative<std::monostate>(nv))
+                            continue;
+
+                        mv.push_back(nv);
+                    }
+
+                    if (mv.size() == 0)
+                    {
+                        pLogger->error(String("option: ") + opt->name + String("need a value at lest, but got empty."));
+                        return false;
+                    }
+
+                    v = mv;
+                }
+                else
+                {
+                    String valueText = ++cur < argc ? argv[cur] : "";
+                    std::smatch res;
+                    if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) || std::regex_search(valueText, res, optionReg))
+                    {
+                        pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
+                        return false;
+                    }
+
+                    v = getValue(valueText);
+                }
+                opts[opt->name] = v;
+            }
+            else
+            {
+                opts[opt->name] = Variant();
+            }
+
+            if (pLogger)
+                pLogger->debug(String("parse multi option alias: ") + a + String(" success"));
+
             cur++;
             return true;
         };
@@ -542,7 +606,7 @@ public:
             Command* command = findCommand(name);
             if(!command)
             {
-                if(pLogger) pLogger->warn(String("command ") + name + String(" not found"));
+                if(pLogger) pLogger->warn(String("unknown identifier: ") + name);
                 return false;
             }
 
