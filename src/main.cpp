@@ -1,4 +1,5 @@
 #include <iostream>
+#include <functional>
 
 #include "commander_cpp.hpp"
 
@@ -8,6 +9,13 @@ struct TestResult
 {
     bool result;
     std::string errMsg;
+
+    TestResult merge(TestResult other)
+    {
+        this->result = this->result && other.result;
+        this->errMsg += this->errMsg.empty() ? other.errMsg : ("\n" + other.errMsg);
+        return *this;
+    }
 };
 
 class Test
@@ -15,6 +23,42 @@ class Test
 public:
     virtual std::string id() = 0;
     virtual TestResult test() = 0;
+};
+class TestLogger : public Logger
+{
+public:
+    std::function<void(const std::string &msg)> checkDebug = nullptr;
+    std::function<void(const std::string &msg)> checkWarn = nullptr;
+    std::function<void(const std::string &msg)> checkError = nullptr;
+    std::function<void(const std::string &msg)> checkPrint = nullptr;
+
+    virtual Logger *debug(const String &msg)
+    {
+        if(checkDebug != nullptr){
+            checkDebug(msg);
+        }
+        return this;
+    }
+    virtual Logger *warn(const String &msg)
+    {
+        if(checkWarn != nullptr){
+            checkWarn(msg);
+        }
+        return this;
+    }
+    virtual Logger *error(const String &msg)
+    {
+        if(checkError != nullptr){
+            checkError(msg);
+        }
+        return this;
+    }
+    virtual Logger *print(const String &msg) {
+        if(checkPrint != nullptr){
+            checkPrint(msg);
+        }
+        return this;
+    }
 };
 
 class VersionTest : public Command, public Test
@@ -88,6 +132,110 @@ public:
     }
 };
 
+class OptionTest : public Command , public Test
+{
+public:
+    OptionTest() : Command("",new TestLogger())
+    {
+        this->name(id())
+            ->description("测试选项解析。")
+            ->option("-s --mustSimgleOption <values>", "必须单个值")
+            ->option("-m --mustMultiOption <values...>", "至少一个值");
+    }
+    virtual std::string id() override { return "OptionTest"; }
+    virtual TestResult test() override
+    {
+        std::vector<TestResult> results;
+        TestLogger *logger = static_cast<TestLogger*>(this->pLogger);
+
+        do
+        {
+            bool hasError = false;
+            logger->checkError = [&](const std::string &msg)
+            {
+                // std::cout << msg << std::endl;
+                if (msg == "option: mustSimgleOption need a value, but got zero.")
+                {
+                    logger->checkError = nullptr;
+                    hasError = true;
+                }
+            };
+
+            char *argv[] = {"testCommand", "-s"};
+            this->parse(2, argv);
+
+            results.push_back(hasError ? TestResult{true, ""} : TestResult{false, "未正确报错：option: mustSimgleOption need a value, but got zero."});
+        } while (false);
+
+        do
+        {
+            bool hasError = false;
+            logger->checkWarn = [&](const std::string &msg)
+            {
+                // std::cout << msg << std::endl;
+                if (msg == "unknown identifier: otherValue")
+                {
+                    logger->checkError = nullptr;
+                    hasError = true;
+                }
+            };
+
+            char *argv[] = {"testCommand", "-s", "value", "otherValue"};
+            this->parse(4, argv);
+
+            results.push_back(hasError ? TestResult{true, ""} : TestResult{false, "未正确报错：unknown identifier: otherValue"});
+        } while (false);
+
+        do
+        {
+            logger->checkWarn = [&](const std::string &msg)
+            {
+                results.push_back(TestResult{false, "意外的警告：" + msg});
+            };
+            logger->checkError = [&](const std::string &msg)
+            {
+                results.push_back(TestResult{false, "意外的错误：" + msg});
+            };
+            this->action([&](Vector<Variant> args, Map<String, Variant> opts)
+                         {
+                             auto it = opts.find("mustSimgleOption");
+                             if (it == opts.end())
+                             {
+                                 results.push_back(TestResult{false, "未解析到option: mustMultiOption"});
+                                 return;
+                             }
+
+                             if (!std::holds_alternative<String>(it->second))
+                             {
+                                 results.push_back(TestResult{false, "option: mustMultiOption,未解析到值"});
+                                 return;
+                             }
+                             
+                             std::string * v = std::get_if<String>(&it->second);
+                             if (!v)
+                             {
+                                 results.push_back(TestResult{false, "option: mustMultiOption 的值不是一个字符串"});
+                                 return;
+                             }
+
+                             if(*v != "value")
+                             {
+                                 results.push_back(TestResult{false, "option: mustMultiOption 的值不是预期值:value"});
+                             } });
+
+            char *argv[] = {"testCommand", "-s", "value"};
+            this->parse(3, argv);
+        } while (false);
+
+
+        TestResult result({true, ""});
+        for(auto res : results){
+            result = result.merge(res);
+        }
+        return result;
+    }
+};
+
 class ArgumentTest : public Command, public Test
 {
 public:
@@ -137,7 +285,8 @@ int main(int argc, char **argv)
         Test *tests[] = {
             new VersionTest(),
             new DescriptionTest(),
-            new ArgumentTest()
+            new OptionTest(),
+            // new ArgumentTest()
         };
 
         for (int i = 0; i < std::size(tests); i++)
@@ -145,13 +294,13 @@ int main(int argc, char **argv)
             TestResult res = tests[i]->test();
             if (!res.result)
             {
-                std::cout << "test :" << tests[i]->id() << " failed: " << res.errMsg << std::endl;
+                std::cout << "test :" << tests[i]->id() << " 失败: " << res.errMsg << std::endl;
             }
             else
             {
                 if(opts.find("display-success-info") != opts.end())
                 {
-                    std::cout << "test :" << tests[i]->id() << " passed" << std::endl;
+                    std::cout << "test :" << tests[i]->id() << " 成功" << std::endl;
                 }
             }
         } 
