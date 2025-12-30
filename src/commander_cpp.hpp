@@ -2,12 +2,12 @@
 #define COMMANDER_CPP_HPP
 
 #include <iostream>
+#include <sstream>
 #include <functional>
 #include <vector>
 #include <map>
 #include <variant>
 #include <regex>
-#include <sstream>
 
 namespace COMMANDER_CPP
 {
@@ -668,6 +668,19 @@ public:
             return;
         }
 
+        for(const auto arg : arguments)
+        {
+            if(arg->valueIsRequired)
+            {
+                if(args.empty())
+                {
+                    pLogger->error(String("argument: ") + arg->name + String(" is required, but got empty."));
+                    return;
+                }
+                break;
+            }
+        }
+
         if(actionCallback)
         {
             actionCallback(args, opts);
@@ -807,8 +820,8 @@ private:
     Command* parentCommand;
 
     Vector<Option*> options;
-    Vector<Command*> subCommands;
     Vector<Argument*> arguments;
+    Vector<Command*> subCommands;
 
 protected:
     Logger *pLogger;
