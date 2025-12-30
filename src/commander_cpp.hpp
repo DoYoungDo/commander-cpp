@@ -652,7 +652,7 @@ class Command
             if (!command)
             {
                 if (pLogger)
-                    pLogger->warn(String("unknown identifier: ") + name);
+                    pLogger->debug(name + " is not a sub command");
                 return false;
             }
 
@@ -660,11 +660,31 @@ class Command
             return true;
         };
         auto parseArgument = [&](const String &arg) {
-            cur++;
             if (pLogger)
                 pLogger->debug(String("parse argument: ") + arg);
 
-            args.push_back(getValue(arg));
+            if (arguments.empty())
+            {
+                if (pLogger)
+                    pLogger->warn("unknown identifier: " + arg);
+                cur++;
+                return true;
+            }
+
+            Variant v = getValue(arg);
+            if (std::holds_alternative<std::monostate>(v))
+            {
+                if (pLogger)
+                    pLogger->warn(arg + String(" is not a valid argument value"));
+                ++cur;
+                return true;
+            }
+
+            if (pLogger)
+                pLogger->debug("parse argument: " + arg + " success");
+
+            cur++;
+            args.push_back(v);
             return true;
         };
         while (cur < argc)
