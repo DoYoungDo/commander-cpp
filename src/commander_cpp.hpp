@@ -482,19 +482,22 @@ public:
                 {
                     std::vector<VariantBase> mv;
 
-                    while (++cur < argc)
+                    while (cur + 1 < argc)
                     {
-                        String arg = argv[cur];
+                        String arg = argv[cur + 1];
                         std::smatch res;
                         if (std::regex_search(arg, res, optionAliasReg) || std::regex_search(arg, res, optionReg))
                         {
-                            --cur;
                             break;
                         }
                         auto nv = getBaseValue(arg);
                         if (std::holds_alternative<std::monostate>(nv))
-                            continue;
+                        {
+                            pLogger->error(String("option: ") + opt->name + String(" got an invalid value: ") + arg);
+                            return false;
+                        }
 
+                        ++cur;
                         mv.push_back(nv);
                     }
 
@@ -528,7 +531,7 @@ public:
             if (pLogger)
                 pLogger->debug(String("parse multi option alias: ") + a + String(" success"));
 
-            cur++;
+            ++cur;
             return true;
         };
         auto parseOptionName = [&](const String& aliasOrName, const String& value = String()){
