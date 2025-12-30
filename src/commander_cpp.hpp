@@ -310,6 +310,7 @@ class Command
     }
 
     /**
+     * @param nameAndArg 命令名称和参数定义字符串，例如 "copy <from...> | [to...]"
      * @return new Command
      */
     virtual Command *command(const String &nameAndArg, const String &desc = String())
@@ -354,8 +355,11 @@ class Command
         return this;
     };
 
-    virtual Command *argument(const String &name, const String &desc = String(),
-                              const Variant &defaultValue = Variant())
+    /**
+     * @param name 参数名称和定义字符串，例如 "<todo...>" 或 "[todo...]"
+     * @return this
+     */
+    virtual Command *argument(const String &name, const String &desc = String(), const Variant &defaultValue = Variant())
     {
         Argument *arg = Argument::create(name, pLogger);
         if (!arg)
@@ -369,6 +373,10 @@ class Command
         return this;
     };
 
+    /**
+     * @param flag 选项标志字符串，例如 "-d --debug <level...> | [debug...]"
+     * @return this
+     */
     virtual Command *option(const String &flag, const String &desc = String(), const Variant &defaultValue = Variant())
     {
         Option *opt = Option::create(flag, pLogger);
