@@ -190,6 +190,7 @@ class OptionTest : public Command, public Test
 
         do
         {
+            // logger->stdOut = true;
             bool hasError = false;
             logger->checkWarn = [&](const std::string &msg) {
                 // std::cout << msg << std::endl;
@@ -655,6 +656,163 @@ class ComplexOptionTest : public Command, public Test
     }
 };
 
+class IntegratedTest : public Command, public Test
+{
+  public:
+    IntegratedTest() : Command("", new TestLogger())
+    {
+        this->name(id())
+        ->version("1.0.0")
+        ->description("集成测试命令行解析。")
+        ->option("-d --done", "执行子命令add,的可选项，是否完成")
+        ->option("-p --priority", "执行子命令add,的可选项，设置优先")
+        ->argument("<todo...>", "执行子命令add,的必需参数，待办事项列表");
+
+        this->command("add <todo...>", "添加待办事项,参数为待办事项列表")
+        ->option("-d --done", "是否完成")
+        ->option("-p --priority", "执行子命令add,的可选项，设置优先");
+
+        this->command("rm", "删除待办事项")
+        ->argument("<index...>", "参数为待办事项索引列表")
+        ->option("-f --force", "强制删除");
+    }
+    virtual std::string id() override
+    {
+        return "IntegratedTest";
+    }
+    virtual TestResult test() override
+    {
+        std::vector<TestResult> results;
+        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+
+        auto resetChecks = [&]() {
+            logger->checkDebug = nullptr;
+            logger->checkWarn = nullptr;
+            logger->checkError = nullptr;
+            logger->checkPrint = nullptr;
+            this->action([](Vector<Variant> args, Map<String, Variant> opts) {});
+        };
+
+        do
+        {
+            bool hasError = false;
+            logger->checkError = [&](const std::string &msg) {
+                if(msg == "argument: todo is required, but got empty.")
+                {
+                    hasError = true;
+                }
+            };
+            char *argv[] = {"testCommand"};
+            this->parse(1, argv);
+
+            if (!hasError)
+                results.push_back(TestResult{false, "未正确报错：argument: todo is required, but got empty."});
+
+            resetChecks();
+        } while (false);
+
+        do
+        {
+            bool hasPrint = false;
+            logger->checkPrint = [&](const std::string &msg) {
+                if (msg == "1.0.0")
+                {
+                    hasPrint = true;
+                }
+            };
+            char *argv[] = {"testCommand", "-V"};
+            this->parse(2, argv);
+
+            if (!hasPrint)
+                results.push_back(TestResult{false, "未正确输出版本号: 1.0.0"});
+
+            resetChecks();
+        } while (false);
+
+        do
+        {
+            bool hasPrint = false;
+            logger->checkPrint = [&](const std::string &msg) {
+                std::regex reg(R"(^Usage:\sIntegratedTest\s\[options\]\s\<todo\.\.\.\>$)", std::regex_constants::multiline);
+                std::regex reg1(R"(^集成测试命令行解析。$)", std::regex_constants::multiline);
+                std::regex reg2(R"(^Arguments:$)", std::regex_constants::multiline);
+                std::regex reg3(R"(^\s+todo\.\.\.)", std::regex_constants::multiline);
+                std::regex reg4(R"(^Options:$)", std::regex_constants::multiline);
+                std::regex reg5(R"(^\s+\-V,\s\-\-version\s+out\sput\sversion\snumber.$)", std::regex_constants::multiline);
+                std::regex reg6(R"(^\s+\-d,\s\-\-done)", std::regex_constants::multiline);
+                std::regex reg7(R"(^\s+\-h,\s\-\-help)", std::regex_constants::multiline);
+                std::regex reg8(R"(^Commands:$)", std::regex_constants::multiline);
+                std::regex reg9(R"(^\s+add\s\[options\]\s\<todo\.\.\.\>)", std::regex_constants::multiline);
+                std::regex reg10(R"(^\s+rm\s\[options\]\s\<index\.\.\.\>)", std::regex_constants::multiline);
+                std::smatch res;
+                hasPrint = std::regex_search(msg, res, reg) && std::regex_search(msg, res, reg1) &&
+                           std::regex_search(msg, res, reg2) && std::regex_search(msg, res, reg3) &&
+                           std::regex_search(msg, res, reg4) && std::regex_search(msg, res, reg5) &&
+                           std::regex_search(msg, res, reg6) && std::regex_search(msg, res, reg7) &&
+                           std::regex_search(msg, res, reg8) && std::regex_search(msg, res, reg9) &&
+                           std::regex_search(msg, res, reg10);
+            };
+            char *argv[] = {"testCommand", "-h"};
+            this->parse(2, argv);
+
+            if (!hasPrint)
+                results.push_back(TestResult{false, "帮助文档输出不正确"});
+
+            resetChecks();
+        } while (false);
+
+        do
+        {
+            // logger->stdOut = true;
+            this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
+                if (opts.find("done") == opts.end())
+                {
+                    results.push_back(TestResult{false, "未解析到done选项"});
+                }
+                if(args.size() != 1)
+                {
+                    results.push_back(TestResult{false, "参数数量解析不正确"});
+                }
+                auto todo = std::get_if<String>(&args[0]);
+                if (!todo || *todo != "task1")
+                {
+                    results.push_back(TestResult{false, "参数值解析不正确"});
+                }
+            });
+            char *argv[] = {"testCommand", "-d", "task1", "task2", "task3"};
+            this->parse(3, argv);
+
+            this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
+                if(args.size() != 3)
+                {
+                    results.push_back(TestResult{false, "参数数量解析不正确"});
+                }
+                auto todo = std::get_if<String>(&args[0]);
+                if (!todo || *todo != "task1")
+                {
+                    results.push_back(TestResult{false, "参数值解析不正确"});
+                }
+                auto todo1 = std::get_if<String>(&args[1]);
+                if (!todo1 || *todo1 != "task2")
+                {
+                    results.push_back(TestResult{false, "参数值解析不正确"});
+                }
+                auto todo2 = std::get_if<String>(&args[2]);
+                if (!todo2 || *todo2 != "task3")
+                {
+                    results.push_back(TestResult{false, "参数值解析不正确"});
+                }
+            });
+            this->parse(5, argv);
+
+            resetChecks();
+        } while (false);
+
+
+        return mergeAll(results);
+    }
+};
+
 int main(int argc, char **argv)
 {
     Command("test")
@@ -662,7 +820,8 @@ int main(int argc, char **argv)
         ->action([](Vector<Variant> args, Map<String, Variant> opts) {
             Test *tests[] = {new VersionTest(),          new DescriptionTest(),   new OptionTest(),
                              new ArgumentTest(),         new SubCommandTest(),    new DefaultValueTest(),
-                             new MultiValueOptionTest(), new ErrorHandlingTest(), new ComplexOptionTest()};
+                             new MultiValueOptionTest(), new ErrorHandlingTest(), new ComplexOptionTest(),
+                             new IntegratedTest()};
 
             for (int i = 0; i < std::size(tests); i++)
             {
