@@ -122,7 +122,8 @@ class Command
             if (versionOption)
             {
                 versionOption->defaultValue = v;
-                versionOption->desc = desc;
+                if (!desc.empty())
+                    versionOption->desc = desc;
             }
         });
 
@@ -166,7 +167,8 @@ class Command
         FinialRelease r([this, desc]() {
             if (helpOption)
             {
-                helpOption->desc = desc;
+                if (!desc.empty())
+                    helpOption->desc = desc;
             }
         });
 
@@ -733,7 +735,7 @@ class Command
         }
     }
 
-  private:
+  public:
     Command *findCommand(const String &name)
     {
         for (const auto cmd : subCommands)
@@ -746,6 +748,7 @@ class Command
         return nullptr;
     }
 
+  private:
     class Option;
     Option *findOption(const String &name)
     {
