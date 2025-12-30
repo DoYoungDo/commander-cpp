@@ -36,6 +36,7 @@ class Test
 class TestLogger : public Logger
 {
   public:
+    bool stdOut = false;
     std::function<void(const std::string &msg)> checkDebug = nullptr;
     std::function<void(const std::string &msg)> checkWarn = nullptr;
     std::function<void(const std::string &msg)> checkError = nullptr;
@@ -43,24 +44,32 @@ class TestLogger : public Logger
 
     virtual Logger *debug(const String &msg)
     {
+        if (stdOut)
+            std::cout << "DEBUG: " << msg << std::endl;
         if (checkDebug != nullptr)
             checkDebug(msg);
         return this;
     }
     virtual Logger *warn(const String &msg)
     {
+        if (stdOut)
+            std::cout << "WARN: " << msg << std::endl;
         if (checkWarn != nullptr)
             checkWarn(msg);
         return this;
     }
     virtual Logger *error(const String &msg)
     {
+        if (stdOut)
+            std::cout << "ERROR: " << msg << std::endl;
         if (checkError != nullptr)
             checkError(msg);
         return this;
     }
     virtual Logger *print(const String &msg)
     {
+        if (stdOut)
+            std::cout << "PRINT: " << msg << std::endl;
         if (checkPrint != nullptr)
             checkPrint(msg);
         return this;
@@ -492,7 +501,9 @@ class MultiValueOptionTest : public Command, public Test
   public:
     MultiValueOptionTest() : Command("", new TestLogger())
     {
-        this->name(id())->description("测试多值选项")->option("-f --files <files...>", "文件列表");
+        this->name(id())->description("测试多值选项")
+        ->option("-f --files <files...>", "文件列表")
+        ->option("-o --otherOption <other>", "其他选项");
     }
     virtual std::string id() override
     {
@@ -502,6 +513,7 @@ class MultiValueOptionTest : public Command, public Test
     {
         std::vector<TestResult> results;
         TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        // logger->stdOut = true;
 
         this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
             auto filesIt = opts.find("files");
@@ -538,8 +550,8 @@ class MultiValueOptionTest : public Command, public Test
             results.push_back(TestResult{true, ""});
         });
 
-        char *argv[] = {"testCommand", "-f", "file1.txt", "file2.txt", "file3.txt"};
-        this->parse(5, argv);
+        char *argv[] = {"testCommand", "-f", "file1.txt", "file2.txt", "file3.txt", "-o", "otherValue"};
+        this->parse(7, argv);
 
         return mergeAll(results);
     }

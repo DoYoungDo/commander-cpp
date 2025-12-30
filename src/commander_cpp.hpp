@@ -500,8 +500,7 @@ public:
 
                     if (mv.size() == 0)
                     {
-                        pLogger->error(String("option: ") + opt->name + String("need a value at lest, but got empty."));
-                        ++cur;
+                        pLogger->error(String("option: ") + opt->name + String(" need a value at lest, but got zero."));
                         return false;
                     }
 
@@ -514,7 +513,6 @@ public:
                     if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) || std::regex_search(valueText, res, optionReg))
                     {
                         pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
-                        ++cur;
                         return false;
                     }
 
@@ -576,7 +574,7 @@ public:
 
                     if(mv.size() == 0)
                     {
-                        pLogger->error(String("option: ") + opt->name + String("need a value at lest, but got empty."));
+                        pLogger->error(String("option: ") + opt->name + String(" need a value at lest, but got zero."));
                         ++cur;
                         return false;
                     }
@@ -589,7 +587,7 @@ public:
                     std::smatch res;
                     if(valueText.empty() || std::regex_search(valueText, res, optionAliasReg) || std::regex_search(valueText, res, optionReg))
                     {
-                        pLogger->error(String("option: ") + opt->name + String("need a value, but got empty."));
+                        pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
                         ++cur;
                         return false;   
                     }
