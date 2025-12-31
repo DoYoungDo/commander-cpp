@@ -429,6 +429,15 @@ class Command
         std::regex doubleValueReg(R"(^-?\d+\.\d+$)");
         std::regex boolValueReg(R"(^(?:(true)|false)$)");
 
+        enum LogType{D,W,E,P};
+        auto log = [this](LogType type, const String &msg) {
+            if (pLogger)
+                if (type == D) pLogger->debug(msg);
+                if (type == W) pLogger->warn(msg);
+                if (type == E) pLogger->error(msg);
+                if (type == P) pLogger->print(msg);
+        };
+
         auto getBaseValue = [=](const String &text) {
             if (text.empty())
             {
@@ -452,7 +461,6 @@ class Command
 
             return VariantBase(text);
         };
-
         auto getValue = [=](const String &text) {
             if (text.empty())
             {
@@ -476,9 +484,9 @@ class Command
 
             return Variant(text);
         };
+
         auto parseMuiltOptionAlias = [&](const String &alias, const String &value = String()) {
-            if (pLogger)
-                pLogger->debug(String("parse multi option alias: ") + alias);
+            log(D, String("try parse multi option alias: ") + alias);
 
             for (auto it = alias.begin(); it != alias.end() - 1; it++)
             {
@@ -488,20 +496,17 @@ class Command
                 Option *opt = findOptionByAlias(a);
                 if (!opt)
                 {
-                    if (pLogger)
-                        pLogger->warn(String("option alias ") + a + String(" not found"));
+                    log(W, String("option alias ") + a + String(" not found"));
                     continue;
                 }
                 if (opt->valueIsRequired)
                 {
-                    if (pLogger)
-                        pLogger->error(String("option: ") + opt->name + String(" value is required"));
+                    log(E, String("option: ") + opt->name + String(" value is required"));
                     ++cur;
                     return false;
                 }
                 opts[opt->name] = Variant();
-                if (pLogger)
-                    pLogger->debug(String("parse multi option alias: ") + a + String(" success"));
+                log(D, String("parse multi option alias: ") + a + String(" success"));
             }
 
             char a[2];
@@ -510,8 +515,7 @@ class Command
             Option *opt = findOptionByAlias(a);
             if (!opt)
             {
-                if (pLogger)
-                    pLogger->warn(String("option alias ") + a + String(" not founds"));
+                log(W, String("option alias ") + a + String(" not founds"));
                 ++cur;
                 return true;
             }
@@ -571,25 +575,22 @@ class Command
             }
             else
             {
-                if (!value.empty() && pLogger)
-                    pLogger->warn(String("option: ") + opt->name + String(" does not need a value, but got: ") + value);
+                if (!value.empty())
+                    log(W, String("option: ") + opt->name + String(" does not need a value, but got: ") + value);
             }
 
-            if (pLogger)
-                pLogger->debug(String("parse multi option alias: ") + a + String(" success"));
+            log(D, String("parse multi option alias: ") + a + String(" success"));
 
             opts[opt->name] = v;
             ++cur;
             return true;
         };
         auto parseOptionName = [&](const String &name, const String &value = String()) {
-            if (pLogger)
-                pLogger->debug(String("parse option name: ") + name + String(" value: ") + value);
+            log(D, String("try parse option name: ") + name + String(" value: ") + value);
             Option *opt = findOption(name);
             if (!opt)
             {
-                if (pLogger)
-                    pLogger->warn(String("unknown option: ") + name);
+                log(W, String("unknown option: ") + name);
                 ++cur;
                 return true;
             }
@@ -628,8 +629,7 @@ class Command
 
                         if (mv.size() == 0)
                         {
-                            pLogger->error(String("option: ") + opt->name +
-                                           String(" need a value at lest, but got zero."));
+                            log(E, String("option: ") + opt->name + String(" need a value at lest, but got zero."));
                             ++cur;
                             return false;
                         }
@@ -643,7 +643,7 @@ class Command
                         if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
                             std::regex_search(valueText, res, optionReg))
                         {
-                            pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
+                            log(E, String("option: ") + opt->name + String(" need a value, but got zero."));
                             ++cur;
                             return false;
                         }
@@ -653,15 +653,15 @@ class Command
 
                     if (std::holds_alternative<std::monostate>(v))
                     {
-                        pLogger->error(String("option: ") + opt->name + String("got an invalid value."));
+                        log(E, String("option: ") + opt->name + String("got an invalid value."));
                         return false;
                     }
                 }
             }
             else
             {
-                if (!value.empty() && pLogger)
-                    pLogger->warn(String("option: ") + opt->name + String(" does not need a value, but got: ") + value);
+                if (!value.empty())
+                    log(W, String("option: ") + opt->name + String(" does not need a value, but got: ") + value);
             }
 
             opts[opt->name] = v;
@@ -669,27 +669,24 @@ class Command
             return true;
         };
         auto parseCommand = [&](const String &name) {
-            if (pLogger)
-                pLogger->debug(String("parse command: ") + name);
+            log(D, String("try parse command: ") + name);
             Command *command = findCommand(name);
             if (!command)
             {
-                if (pLogger)
-                    pLogger->debug(name + " is not a sub command");
+                log(D, name + " is not a sub command");
                 return false;
             }
 
+            log(D, "parse command: " + name + " success");
             command->parse(argc, argv, ++cur);
             return true;
         };
         auto parseArgument = [&](const String &arg) {
-            if (pLogger)
-                pLogger->debug(String("try parse argument: ") + arg);
+            log(D, String("try parse argument: ") + arg);
 
             if (arguments.empty())
             {
-                if (pLogger)
-                    pLogger->warn("unknown identifier: " + arg);
+                log(W, "unknown identifier: " + arg);
                 cur++;
                 return true;
             }
@@ -703,8 +700,7 @@ class Command
                 return true;
             }
 
-            if (pLogger)
-                pLogger->debug("parse argument: " + arg + " success");
+            log(D, "parse argument: " + arg + " success");
 
             cur++;
             args.push_back(v);
@@ -713,8 +709,7 @@ class Command
         while (cur < argc)
         {
             String arg = argv[cur];
-            if (pLogger)
-                pLogger->debug(String("try parse identifier: ") + arg);
+            log(D, String("try parse identifier: ") + arg);
             std::smatch res;
 
             if (std::regex_search(arg, res, commandReg))
@@ -746,15 +741,13 @@ class Command
 
         if (opts.find(versionOption->name) != opts.end())
         {
-            if (pLogger)
-                pLogger->print(version());
+            log(P, version());
             return;
         }
 
         if (opts.find(helpOption->name) != opts.end())
         {
-            if (pLogger)
-                pLogger->print(helpText());
+            log(P, helpText());
             return;
         }
 
@@ -765,7 +758,7 @@ class Command
             {
                 if (argsEmpty)
                 {
-                    pLogger->error("Command: " + commandName + String("'s argument: ") + arg->name + String(" is required, but got empty."));
+                    log(E, "Command: " + commandName + String("'s argument: ") + arg->name + String(" is required, but got empty."));
                     return;
                 }
                 break;
