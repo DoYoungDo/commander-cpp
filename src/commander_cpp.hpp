@@ -479,6 +479,7 @@ class Command
         auto parseMuiltOptionAlias = [&](const String &alias, const String &value = String()) {
             if (pLogger)
                 pLogger->debug(String("parse multi option alias: ") + alias);
+                
             for (auto it = alias.begin(); it != alias.end() - 1; it++)
             {
                 char a[2];
@@ -566,10 +567,6 @@ class Command
 
                         v = getValue(valueText);
                     }
-                }
-                else
-                {
-                    // opts[opt->name] = Variant();
                 }
             }
             else
