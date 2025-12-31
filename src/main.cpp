@@ -693,6 +693,16 @@ class IntegratedTest : public Command, public Test
             this->action([](Vector<Variant> args, Map<String, Variant> opts) {});
         };
 
+        char *argv[] = {"testCommand"};
+        char *argv1[] = {"testCommand", "-V"};
+        char *argv2[] = {"testCommand", "--version"};
+        char *argv3[] = {"testCommand", "-h"};
+        char *argv4[] = {"testCommand", "--help"};
+        char *argv5[] = {"testCommand", "-d", "task1", "task2", "task3"};
+        char *argv6[] = {"testCommand", "--done", "task1", "task2", "task3"};
+        char *argv7[] = {"testCommand", "-dp", "task1", "task2", "task3"};
+        char *argv8[] = {"testCommand", "-dp=1", "task1", "task2", "task3"};
+
         do
         {
             bool hasError = false;
@@ -702,9 +712,7 @@ class IntegratedTest : public Command, public Test
                     hasError = true;
                 }
             };
-            char *argv[] = {"testCommand"};
             this->parse(1, argv);
-
             if (!hasError)
                 results.push_back(TestResult{false, "未正确报错：argument: todo is required, but got empty."});
 
@@ -720,16 +728,12 @@ class IntegratedTest : public Command, public Test
                     hasPrint = true;
                 }
             };
-            char *argv[] = {"testCommand", "-V"};
-            this->parse(2, argv);
-
+            this->parse(2, argv1);
             if (!hasPrint)
                 results.push_back(TestResult{false, "未正确输出版本号: 1.0.0"});
 
             hasPrint = false;
-            char *argv1[] = {"testCommand", "--version"};
-            this->parse(2, argv1);
-
+            this->parse(2, argv2);
             if (!hasPrint)
                 results.push_back(TestResult{false, "未正确输出版本号: 1.0.0"});
 
@@ -761,16 +765,12 @@ class IntegratedTest : public Command, public Test
                            std::regex_search(msg, res, reg10);
             };
 
-            char *argv[] = {"testCommand", "-h"};
-            this->parse(2, argv);
-
+            this->parse(2, argv3);
             if (!hasPrint)
                 results.push_back(TestResult{false, "帮助文档输出不正确"});
 
             hasPrint = false;
-            char *argv1[] = {"testCommand", "--help"};
-            this->parse(2, argv1);
-
+            this->parse(2, argv4);
             if (!hasPrint)
                 results.push_back(TestResult{false, "帮助文档输出不正确"});
 
@@ -779,11 +779,6 @@ class IntegratedTest : public Command, public Test
 
         do
         {
-            char *argv[] = {"testCommand", "-d", "task1", "task2", "task3"};
-            char *argv1[] = {"testCommand", "--done", "task1", "task2", "task3"};
-            char *argv2[] = {"testCommand", "-dp", "task1", "task2", "task3"};
-            char *argv3[] = {"testCommand", "-dp=1", "task1", "task2", "task3"};
-
             this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
                 if (opts.find("done") == opts.end())
                 {
@@ -799,8 +794,8 @@ class IntegratedTest : public Command, public Test
                     results.push_back(TestResult{false, "参数值解析不正确"});
                 }
             });
-            this->parse(3, argv);
-            this->parse(3, argv1);
+            this->parse(3, argv5);
+            this->parse(3, argv6);
 
             this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
                 if (opts.find("done") == opts.end())
@@ -812,7 +807,7 @@ class IntegratedTest : public Command, public Test
                     results.push_back(TestResult{false, "未解析到priority选项"});
                 }
             });
-            this->parse(3, argv2);
+            this->parse(3, argv7);
 
             this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
                 if(args.size() != 3)
@@ -835,24 +830,28 @@ class IntegratedTest : public Command, public Test
                     results.push_back(TestResult{false, "参数值解析不正确"});
                 }
             });
-            this->parse(5, argv);
-            this->parse(5, argv1);
+            this->parse(5, argv5);
+            this->parse(5, argv6);
 
             resetChecks();
 
-            logger->stdOut = true;
             bool hasWarn = false;
             logger->checkWarn = [&](const std::string &msg) {
                 if (msg == "option: priority does not need a value, but got: 1")
                     hasWarn = true;
             };
-            this->parse(3, argv3);
+            this->parse(3, argv8);
             if (!hasWarn)
                 results.push_back(TestResult{false, "未检测到预期警告: option: priority does not need a value, but got: 1"});
 
             resetChecks();
         } while (false);
 
+        do
+        {
+            // logger->stdOut = true;
+        } while (false);
+        
         return mergeAll(results);
     }
 };
