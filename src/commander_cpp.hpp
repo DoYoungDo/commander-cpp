@@ -488,7 +488,7 @@ class Command
                 if (!opt)
                 {
                     if (pLogger)
-                        pLogger->debug(String("warn:") + String("option alias ") + a + String(" not found\n"));
+                        pLogger->warn(String("option alias ") + a + String(" not found"));
                     continue;
                 }
                 if (opt->valueIsRequired)
@@ -510,7 +510,7 @@ class Command
             if (!opt)
             {
                 if (pLogger)
-                    pLogger->warn(String("warn:") + String("option alias ") + a + String(" not found\n"));
+                    pLogger->warn(String("option alias ") + a + String(" not founds"));
                 ++cur;
                 return true;
             }
@@ -669,7 +669,7 @@ class Command
         };
         auto parseArgument = [&](const String &arg) {
             if (pLogger)
-                pLogger->debug(String("parse argument: ") + arg);
+                pLogger->debug(String("try parse argument: ") + arg);
 
             if (arguments.empty())
             {
@@ -699,7 +699,7 @@ class Command
         {
             String arg = argv[cur];
             if (pLogger)
-                pLogger->debug(String("parse arg: ") + arg);
+                pLogger->debug(String("try parse identifier: ") + arg);
             std::smatch res;
 
             if (std::regex_search(arg, res, commandReg))
