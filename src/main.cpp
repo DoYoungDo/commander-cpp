@@ -674,7 +674,7 @@ class IntegratedTest : public Command, public Test
 
         this->command("rm", "删除待办事项")
         ->argument("<index...>", "参数为待办事项索引列表")
-        ->option("-f --force", "强制删除");
+        ->option("-l --level <levelValue>", "强制删除");
     }
     virtual std::string id() override
     {
@@ -726,11 +726,19 @@ class IntegratedTest : public Command, public Test
             if (!hasPrint)
                 results.push_back(TestResult{false, "未正确输出版本号: 1.0.0"});
 
+            hasPrint = false;
+            char *argv1[] = {"testCommand", "--version"};
+            this->parse(2, argv1);
+
+            if (!hasPrint)
+                results.push_back(TestResult{false, "未正确输出版本号: 1.0.0"});
+
             resetChecks();
         } while (false);
 
         do
         {
+            // logger->stdOut = true;
             bool hasPrint = false;
             logger->checkPrint = [&](const std::string &msg) {
                 std::regex reg(R"(^Usage:\sIntegratedTest\s\[options\]\s\<todo\.\.\.\>$)", std::regex_constants::multiline);
@@ -752,8 +760,16 @@ class IntegratedTest : public Command, public Test
                            std::regex_search(msg, res, reg8) && std::regex_search(msg, res, reg9) &&
                            std::regex_search(msg, res, reg10);
             };
+
             char *argv[] = {"testCommand", "-h"};
             this->parse(2, argv);
+
+            if (!hasPrint)
+                results.push_back(TestResult{false, "帮助文档输出不正确"});
+
+            hasPrint = false;
+            char *argv1[] = {"testCommand", "--help"};
+            this->parse(2, argv1);
 
             if (!hasPrint)
                 results.push_back(TestResult{false, "帮助文档输出不正确"});
@@ -763,7 +779,11 @@ class IntegratedTest : public Command, public Test
 
         do
         {
-            // logger->stdOut = true;
+            char *argv[] = {"testCommand", "-d", "task1", "task2", "task3"};
+            char *argv1[] = {"testCommand", "--done", "task1", "task2", "task3"};
+            char *argv2[] = {"testCommand", "-dp", "task1", "task2", "task3"};
+            char *argv3[] = {"testCommand", "-dp=1", "task1", "task2", "task3"};
+
             this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
                 if (opts.find("done") == opts.end())
                 {
@@ -779,8 +799,20 @@ class IntegratedTest : public Command, public Test
                     results.push_back(TestResult{false, "参数值解析不正确"});
                 }
             });
-            char *argv[] = {"testCommand", "-d", "task1", "task2", "task3"};
             this->parse(3, argv);
+            this->parse(3, argv1);
+
+            this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
+                if (opts.find("done") == opts.end())
+                {
+                    results.push_back(TestResult{false, "未解析到done选项"});
+                }
+                if (opts.find("priority") == opts.end())
+                {
+                    results.push_back(TestResult{false, "未解析到priority选项"});
+                }
+            });
+            this->parse(3, argv2);
 
             this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
                 if(args.size() != 3)
@@ -804,10 +836,22 @@ class IntegratedTest : public Command, public Test
                 }
             });
             this->parse(5, argv);
+            this->parse(5, argv1);
+
+            resetChecks();
+
+            logger->stdOut = true;
+            bool hasWarn = false;
+            logger->checkWarn = [&](const std::string &msg) {
+                if (msg == "option: priority does not need a value, but got: 1")
+                    hasWarn = true;
+            };
+            this->parse(3, argv3);
+            if (!hasWarn)
+                results.push_back(TestResult{false, "未检测到预期警告: option: priority does not need a value, but got: 1"});
 
             resetChecks();
         } while (false);
-
 
         return mergeAll(results);
     }
@@ -815,7 +859,9 @@ class IntegratedTest : public Command, public Test
 
 int main(int argc, char **argv)
 {
-    Command("test")
+    TestLogger logger;
+    // logger.stdOut = true;
+    Command("test", &logger)
         .option("-i --display-success-info", "显示信息")
         ->action([](Vector<Variant> args, Map<String, Variant> opts) {
             Test *tests[] = {new VersionTest(),          new DescriptionTest(),   new OptionTest(),
