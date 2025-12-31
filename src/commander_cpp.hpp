@@ -479,7 +479,7 @@ class Command
         auto parseMuiltOptionAlias = [&](const String &alias, const String &value = String()) {
             if (pLogger)
                 pLogger->debug(String("parse multi option alias: ") + alias);
-                
+
             for (auto it = alias.begin(); it != alias.end() - 1; it++)
             {
                 char a[2];
@@ -765,7 +765,7 @@ class Command
             {
                 if (argsEmpty)
                 {
-                    pLogger->error(String("argument: ") + arg->name + String(" is required, but got empty."));
+                    pLogger->error("Command: " + commandName + String("'s argument: ") + arg->name + String(" is required, but got empty."));
                     return;
                 }
                 break;
