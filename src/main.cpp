@@ -704,7 +704,7 @@ class IntegratedTest : public Command, public Test
         char *argv6[] = {"testCommand", "--done", "task1", "task2", "task3"};
         char *argv7[] = {"testCommand", "-dp", "task1", "task2", "task3"};
         char *argv8[] = {"testCommand", "-dp=1", "task1", "task2", "task3"};
-        char *argv9[] = {"testCommand", "add"};
+        char *argv9[] = {"testCommand", "add", "task1", "task2", "task3"};
 
         do
         {
@@ -853,7 +853,20 @@ class IntegratedTest : public Command, public Test
         do
         {
             // logger->stdOut = true;
+            bool hasError = false;
+            logger->checkError = [&](const std::string &msg) {
+                if (msg == "Command: add's argument: todos is required, but got empty.")
+                    hasError = true;
+            };
             this->parse(2, argv9);
+            if (!hasError)
+                results.push_back(
+                    TestResult{false, "未正确报错：Command: add's argument: todos is required, but got empty."});
+            resetChecks();
+            
+            // logger->stdOut = true;
+            // this->parse(3, argv9);
+
         } while (false);
 
         return mergeAll(results);
