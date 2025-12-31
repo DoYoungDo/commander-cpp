@@ -438,6 +438,33 @@ class Command
                 if (type == P) pLogger->print(msg);
         };
 
+        auto findOption = [this](const String &name) -> Option * {
+            Vector<Option *> opts = options;
+            opts.push_back(versionOption);
+            opts.push_back(helpOption);
+            for (const auto opt : opts)
+            {
+                if (opt->name == name)
+                {
+                    return opt;
+                }
+            }
+            return nullptr;
+        };
+        auto findOptionByAlias = [this](const String &alias) -> Option * {
+            Vector<Option *> opts = options;
+            opts.push_back(versionOption);
+            opts.push_back(helpOption);
+            for (const auto opt : opts)
+            {
+                if (opt->alias == alias)
+                {
+                    return opt;
+                }
+            }
+            return nullptr;
+        };
+
         auto getBaseValue = [=](const String &text) {
             if (text.empty())
             {
@@ -780,37 +807,6 @@ class Command
             if (cmd->commandName == name)
             {
                 return cmd;
-            }
-        }
-        return nullptr;
-    }
-
-  private:
-    class Option;
-    Option *findOption(const String &name)
-    {
-        Vector<Option *> opts = options;
-        opts.push_back(versionOption);
-        opts.push_back(helpOption);
-        for (const auto opt : opts)
-        {
-            if (opt->name == name)
-            {
-                return opt;
-            }
-        }
-        return nullptr;
-    }
-    Option *findOptionByAlias(const String &alias)
-    {
-        Vector<Option *> opts = options;
-        opts.push_back(versionOption);
-        opts.push_back(helpOption);
-        for (const auto opt : opts)
-        {
-            if (opt->alias == alias)
-            {
-                return opt;
             }
         }
         return nullptr;
