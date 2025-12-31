@@ -666,9 +666,9 @@ class IntegratedTest : public Command, public Test
         ->description("集成测试命令行解析。")
         ->option("-d --done", "执行子命令add,的可选项，是否完成")
         ->option("-p --priority", "执行子命令add,的可选项，设置优先")
-        ->argument("<todo...>", "执行子命令add,的必需参数，待办事项列表");
+        ->argument("<addTodos...>", "执行子命令add,的必需参数，待办事项列表");
 
-        this->command("add <todo...>", "添加待办事项,参数为待办事项列表")
+        this->command("add <todos...>", "添加待办事项,参数为待办事项列表")
         ->option("-d --done", "是否完成")
         ->option("-p --priority", "执行子命令add,的可选项，设置优先");
 
@@ -686,6 +686,7 @@ class IntegratedTest : public Command, public Test
         TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
 
         auto resetChecks = [&]() {
+            logger->stdOut = false;
             logger->checkDebug = nullptr;
             logger->checkWarn = nullptr;
             logger->checkError = nullptr;
@@ -702,19 +703,20 @@ class IntegratedTest : public Command, public Test
         char *argv6[] = {"testCommand", "--done", "task1", "task2", "task3"};
         char *argv7[] = {"testCommand", "-dp", "task1", "task2", "task3"};
         char *argv8[] = {"testCommand", "-dp=1", "task1", "task2", "task3"};
+        char *argv9[] = {"testCommand", "add"};
 
         do
         {
             bool hasError = false;
             logger->checkError = [&](const std::string &msg) {
-                if(msg == "argument: todo is required, but got empty.")
+                if(msg == "argument: addTodos is required, but got empty.")
                 {
                     hasError = true;
                 }
             };
             this->parse(1, argv);
             if (!hasError)
-                results.push_back(TestResult{false, "未正确报错：argument: todo is required, but got empty."});
+                results.push_back(TestResult{false, "未正确报错：argument: addTodos is required, but got empty."});
 
             resetChecks();
         } while (false);
@@ -742,19 +744,18 @@ class IntegratedTest : public Command, public Test
 
         do
         {
-            // logger->stdOut = true;
             bool hasPrint = false;
             logger->checkPrint = [&](const std::string &msg) {
-                std::regex reg(R"(^Usage:\sIntegratedTest\s\[options\]\s\<todo\.\.\.\>$)", std::regex_constants::multiline);
+                std::regex reg(R"(^Usage:\sIntegratedTest\s\[options\]\s\<addTodos\.\.\.\>$)", std::regex_constants::multiline);
                 std::regex reg1(R"(^集成测试命令行解析。$)", std::regex_constants::multiline);
                 std::regex reg2(R"(^Arguments:$)", std::regex_constants::multiline);
-                std::regex reg3(R"(^\s+todo\.\.\.)", std::regex_constants::multiline);
+                std::regex reg3(R"(^\s+addTodos\.\.\.)", std::regex_constants::multiline);
                 std::regex reg4(R"(^Options:$)", std::regex_constants::multiline);
                 std::regex reg5(R"(^\s+\-V,\s\-\-version\s+out\sput\sversion\snumber.$)", std::regex_constants::multiline);
                 std::regex reg6(R"(^\s+\-d,\s\-\-done)", std::regex_constants::multiline);
                 std::regex reg7(R"(^\s+\-h,\s\-\-help)", std::regex_constants::multiline);
                 std::regex reg8(R"(^Commands:$)", std::regex_constants::multiline);
-                std::regex reg9(R"(^\s+add\s\[options\]\s\<todo\.\.\.\>)", std::regex_constants::multiline);
+                std::regex reg9(R"(^\s+add\s\[options\]\s\<todos\.\.\.\>)", std::regex_constants::multiline);
                 std::regex reg10(R"(^\s+rm\s\[options\]\s\<index\.\.\.\>)", std::regex_constants::multiline);
                 std::smatch res;
                 hasPrint = std::regex_search(msg, res, reg) && std::regex_search(msg, res, reg1) &&
@@ -850,8 +851,9 @@ class IntegratedTest : public Command, public Test
         do
         {
             // logger->stdOut = true;
+            this->parse(2, argv9);
         } while (false);
-        
+
         return mergeAll(results);
     }
 };
