@@ -421,8 +421,8 @@ class Command
         Map<String, Variant> opts;
 
         int cur = index;
-        std::regex optionAliasReg(R"(^-([a-zA-Z]+)$)");
-        std::regex optionReg(R"(^(?:-([a-zA-Z])|--([a-zA-Z-]+))(?:=(.+))?$)");
+        std::regex optionAliasReg(R"(^(?:-([a-zA-Z]+))(?:=(.+))?$)");
+        std::regex optionReg(R"(^(?:--([a-zA-Z][a-zA-Z-]*))(?:=(.+))?$)");
         std::regex commandReg(R"(^(?!-)([a-zA-Z][a-zA-Z\d]*)$)");
 
         std::regex intValueReg(R"(^-?\d+$)");
@@ -476,7 +476,7 @@ class Command
 
             return Variant(text);
         };
-        auto parseMuiltOptionAlias = [&](const String &alias) {
+        auto parseMuiltOptionAlias = [&](const String &alias, const String &value = String()) {
             if (pLogger)
                 pLogger->debug(String("parse multi option alias: ") + alias);
             for (auto it = alias.begin(); it != alias.end() - 1; it++)
@@ -514,139 +514,157 @@ class Command
                 ++cur;
                 return true;
             }
-            if (opt->valueIsRequired)
-            {
-                Variant v;
-                if (opt->multiValue)
-                {
-                    std::vector<VariantBase> mv;
 
-                    while (cur + 1 < argc)
+            Variant v;
+            if (!opt->valueName.empty() || opt == versionOption || opt == helpOption)
+            {
+                if (opt->valueIsRequired)
+                {
+                    if (opt->multiValue)
                     {
-                        String arg = argv[cur + 1];
-                        std::smatch res;
-                        if (std::regex_search(arg, res, optionAliasReg) || std::regex_search(arg, res, optionReg))
+                        std::vector<VariantBase> mv;
+
+                        while (cur + 1 < argc)
                         {
-                            break;
+                            String arg = argv[cur + 1];
+                            std::smatch res;
+                            if (std::regex_search(arg, res, optionAliasReg) || std::regex_search(arg, res, optionReg))
+                            {
+                                break;
+                            }
+                            auto nv = getBaseValue(arg);
+                            if (std::holds_alternative<std::monostate>(nv))
+                            {
+                                pLogger->error(String("option: ") + opt->name + String(" got an invalid value: ") +
+                                               arg);
+                                return false;
+                            }
+
+                            ++cur;
+                            mv.push_back(nv);
                         }
-                        auto nv = getBaseValue(arg);
-                        if (std::holds_alternative<std::monostate>(nv))
+
+                        if (mv.size() == 0)
                         {
-                            pLogger->error(String("option: ") + opt->name + String(" got an invalid value: ") + arg);
+                            pLogger->error(String("option: ") + opt->name +
+                                           String(" need a value at lest, but got zero."));
                             return false;
                         }
 
-                        ++cur;
-                        mv.push_back(nv);
+                        v = mv;
                     }
-
-                    if (mv.size() == 0)
+                    else
                     {
-                        pLogger->error(String("option: ") + opt->name + String(" need a value at lest, but got zero."));
-                        return false;
-                    }
+                        String valueText = ++cur < argc ? argv[cur] : "";
+                        std::smatch res;
+                        if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
+                            std::regex_search(valueText, res, optionReg))
+                        {
+                            pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
+                            return false;
+                        }
 
-                    v = mv;
+                        v = getValue(valueText);
+                    }
                 }
                 else
                 {
-                    String valueText = ++cur < argc ? argv[cur] : "";
-                    std::smatch res;
-                    if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
-                        std::regex_search(valueText, res, optionReg))
-                    {
-                        pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
-                        return false;
-                    }
-
-                    v = getValue(valueText);
+                    // opts[opt->name] = Variant();
                 }
-                opts[opt->name] = v;
             }
             else
             {
-                opts[opt->name] = Variant();
+                if (!value.empty() && pLogger)
+                    pLogger->warn(String("option: ") + opt->name + String(" does not need a value, but got: ") + value);
             }
 
             if (pLogger)
                 pLogger->debug(String("parse multi option alias: ") + a + String(" success"));
 
+            opts[opt->name] = v;
             ++cur;
             return true;
         };
-        auto parseOptionName = [&](const String &aliasOrName, const String &value = String()) {
+        auto parseOptionName = [&](const String &name, const String &value = String()) {
             if (pLogger)
-                pLogger->debug(String("parse option name: ") + aliasOrName + String(" value: ") + value);
-            Option *opt = findOptionByAlias(aliasOrName);
+                pLogger->debug(String("parse option name: ") + name + String(" value: ") + value);
+            Option *opt = findOption(name);
             if (!opt)
             {
-                opt = findOption(aliasOrName);
-                if (!opt)
-                {
-                    if (pLogger)
-                        pLogger->warn(String("unknown option: ") + aliasOrName);
-                    ++cur;
-                    return true;
-                }
+                if (pLogger)
+                    pLogger->warn(String("unknown option: ") + name);
+                ++cur;
+                return true;
             }
+
             Variant v;
-            if (opt->valueIsRequired)
+            if (!opt->valueName.empty() || opt == versionOption || opt == helpOption)
             {
-                if (opt->multiValue)
+                if (opt->valueIsRequired)
                 {
-                    std::vector<VariantBase> mv;
-                    if (!value.empty())
+                    if (opt->multiValue)
                     {
-                        mv.push_back(getBaseValue(value));
+                        std::vector<VariantBase> mv;
+                        if (!value.empty())
+                        {
+                            mv.push_back(getBaseValue(value));
+                        }
+                        else
+                        {
+                            while (++cur < argc)
+                            {
+                                String arg = argv[cur];
+                                std::smatch res;
+                                if (std::regex_search(arg, res, optionAliasReg) ||
+                                    std::regex_search(arg, res, optionReg))
+                                {
+                                    --cur;
+                                    break;
+                                }
+                                auto nv = getBaseValue(arg);
+                                if (std::holds_alternative<std::monostate>(nv))
+                                    continue;
+
+                                mv.push_back(nv);
+                            }
+                        }
+
+                        if (mv.size() == 0)
+                        {
+                            pLogger->error(String("option: ") + opt->name +
+                                           String(" need a value at lest, but got zero."));
+                            ++cur;
+                            return false;
+                        }
+
+                        v = mv;
                     }
                     else
                     {
-                        while (++cur < argc)
+                        String valueText = !value.empty() ? value : ++cur < argc ? argv[cur] : "";
+                        std::smatch res;
+                        if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
+                            std::regex_search(valueText, res, optionReg))
                         {
-                            String arg = argv[cur];
-                            std::smatch res;
-                            if (std::regex_search(arg, res, optionAliasReg) || std::regex_search(arg, res, optionReg))
-                            {
-                                --cur;
-                                break;
-                            }
-                            auto nv = getBaseValue(arg);
-                            if (std::holds_alternative<std::monostate>(nv))
-                                continue;
-
-                            mv.push_back(nv);
+                            pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
+                            ++cur;
+                            return false;
                         }
+
+                        v = getValue(valueText);
                     }
 
-                    if (mv.size() == 0)
+                    if (std::holds_alternative<std::monostate>(v))
                     {
-                        pLogger->error(String("option: ") + opt->name + String(" need a value at lest, but got zero."));
-                        ++cur;
+                        pLogger->error(String("option: ") + opt->name + String("got an invalid value."));
                         return false;
                     }
-
-                    v = mv;
                 }
-                else
-                {
-                    String valueText = !value.empty() ? value : ++cur < argc ? argv[cur] : "";
-                    std::smatch res;
-                    if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
-                        std::regex_search(valueText, res, optionReg))
-                    {
-                        pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
-                        ++cur;
-                        return false;
-                    }
-
-                    v = getValue(valueText);
-                }
-
-                if (std::holds_alternative<std::monostate>(v))
-                {
-                    pLogger->error(String("option: ") + opt->name + String("got an invalid value."));
-                    return false;
-                }
+            }
+            else
+            {
+                if (!value.empty() && pLogger)
+                    pLogger->warn(String("option: ") + opt->name + String(" does not need a value, but got: ") + value);
             }
 
             opts[opt->name] = v;
@@ -712,14 +730,14 @@ class Command
 
             if (std::regex_search(arg, res, optionAliasReg))
             {
-                if (parseMuiltOptionAlias(res.str(1)))
+                if (parseMuiltOptionAlias(res.str(1), !res.str(2).empty() ? res.str(2) : String()))
                     continue;
                 return;
             }
 
             if (std::regex_search(arg, res, optionReg))
             {
-                if (parseOptionName(!res.str(1).empty() ? res.str(1) : res.str(2), res.str(3)))
+                if (parseOptionName(res.str(1), !res.str(2).empty() ? res.str(2) : String()))
                     continue;
                 return;
             }
@@ -743,11 +761,12 @@ class Command
             return;
         }
 
+        bool argsEmpty = args.empty();
         for (const auto arg : arguments)
         {
             if (arg->valueIsRequired)
             {
-                if (args.empty())
+                if (argsEmpty)
                 {
                     pLogger->error(String("argument: ") + arg->name + String(" is required, but got empty."));
                     return;
