@@ -335,9 +335,10 @@ class ArgumentTest : public Command, public Test
 
         do
         {
+            // logger->stdOut = true;
             bool hasError = false;
             logger->checkError = [&](const std::string &msg) {
-                if (msg == "argument: from is required, but got empty.")
+                if (msg == "Command: ArgumentTest's argument: from is required, but got empty.")
                     hasError = true;
             };
             char *argv[] = {"testCommand"};
@@ -345,7 +346,7 @@ class ArgumentTest : public Command, public Test
 
             if (!hasError)
             {
-                results.push_back(TestResult{false, "未正确报错：argument: from is required, but got empty."});
+                results.push_back(TestResult{false, "未正确报错：Command: ArgumentTest's argument: from is required, but got empty."});
             }
         } while (false);
 
@@ -707,16 +708,17 @@ class IntegratedTest : public Command, public Test
 
         do
         {
+            // logger->stdOut = true;
             bool hasError = false;
             logger->checkError = [&](const std::string &msg) {
-                if(msg == "argument: addTodos is required, but got empty.")
+                if(msg == "Command: IntegratedTest's argument: addTodos is required, but got empty.")
                 {
                     hasError = true;
                 }
             };
             this->parse(1, argv);
             if (!hasError)
-                results.push_back(TestResult{false, "未正确报错：argument: addTodos is required, but got empty."});
+                results.push_back(TestResult{false, "未正确报错：Command: IntegratedTest's argument: addTodos is required, but got empty."});
 
             resetChecks();
         } while (false);
