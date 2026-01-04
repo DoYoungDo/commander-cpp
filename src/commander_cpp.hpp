@@ -61,6 +61,7 @@ class FinialRelease
 class Logger
 {
   public:
+    virtual ~Logger(){}
     virtual Logger *debug(const String &msg)
     {
         return this;
@@ -374,6 +375,8 @@ class Command
         command->parentCommand = this;
         command->versionOption = versionOption;
         command->helpOption = helpOption;
+        if (!command->pLogger)
+            command->pLogger = pLogger;
 
         subCommands.push_back(command);
         return this;
