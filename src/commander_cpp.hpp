@@ -39,8 +39,8 @@ using VariantBase = std::variant<std::monostate, int, double, String, bool>;
 using Variant = std::variant<std::monostate, int, double, String, bool, std::vector<VariantBase>>;
 template <typename K, typename V> using Map = std::map<K, V>;
 template <typename T> using Vector = std::vector<T>;
-using Action = std::function<void(Vector<Variant> args, Map<String, Variant> opts)>;
-using ActionThis = std::function<void(class Command* cmd, Vector<Variant> args, Map<String, Variant> opts)>;
+using Action = std::function<void(class Command* cmd, Vector<Variant> args, Map<String, Variant> opts)>;
+using Action2 = std::function<void(Vector<Variant> args, Map<String, Variant> opts)>;
 
 class FinialRelease
 {
@@ -436,7 +436,7 @@ class Command
         actionCallback = cb;
         return this;
     }
-    virtual Command *action(const ActionThis &cb)
+    virtual Command *action(const Action2 &cb)
     {
         if (!cb)
         {
@@ -444,7 +444,10 @@ class Command
                 pLogger->debug(String("[error]:") + String("action callback is null"));
         }
 
-        actionCallbackThis = cb;
+        actionCallback = [cb](class Command* cmd, Vector<Variant> args, Map<String, Variant> opts){
+            (void)cmd;
+            cb(args, opts);
+        };
         return this;
     }
 
@@ -776,13 +779,7 @@ class Command
         }
 
         if (actionCallback)
-        {
-            actionCallback(args, opts);
-        }
-        else if (actionCallbackThis)
-        {
-            actionCallbackThis(this, args, opts);
-        }
+            actionCallback(this, args, opts);
     }
 
   public:
@@ -888,7 +885,6 @@ class Command
     String commandName;
     String commandDescription;
     Action actionCallback;
-    ActionThis actionCallbackThis;
     Option *versionOption;
     Option *helpOption;
     Command *parentCommand;
