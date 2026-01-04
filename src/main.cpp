@@ -675,7 +675,7 @@ class IntegratedTest : public Command, public Test
 
         this->command("rm", "删除待办事项")
         ->argument("<index...>", "参数为待办事项索引列表")
-        ->option("-l --level <levelValue>", "强制删除");
+        ->option("-l --level <levelValue>", "强制删除", 5);
     }
     virtual std::string id() override
     {
@@ -705,6 +705,8 @@ class IntegratedTest : public Command, public Test
         char *argv7[] = {"testCommand", "-dp", "task1", "task2", "task3"};
         char *argv8[] = {"testCommand", "-dp=1", "task1", "task2", "task3"};
         char *argv9[] = {"testCommand", "add", "task1", "task2", "task3"};
+        char *argv10[] = {"testCommand", "rm", "1", "2", "3", "-l"};
+        char *argv11[] = {"testCommand", "rm", "1", "2", "3", "--level"};
 
         do
         {
@@ -867,6 +869,25 @@ class IntegratedTest : public Command, public Test
             // logger->stdOut = true;
             // this->parse(3, argv9);
 
+        } while (false);
+
+        do
+        {
+            // logger->stdOut = true;
+            this->findCommand("rm")->action([&](Vector<Variant> args, Map<String, Variant> opts) {
+                auto it = opts.find("level");
+                if (it == opts.end())
+                {
+                    results.push_back(TestResult{false, "未解析到level选项"});
+                }
+                auto level = std::get_if<int>(&it->second);
+                if (!level || *level != 5)
+                {
+                    results.push_back(TestResult{false, "level选项值解析不正确"});
+                }
+            });
+            // this->parse(6, argv10);
+            this->parse(6, argv11);
         } while (false);
 
         return mergeAll(results);
