@@ -97,12 +97,12 @@ class Command
     }
     ~Command()
     {
-        if (versionOption)
+        if (versionOption && !parentCommand)
         {
             delete versionOption;
             versionOption = nullptr;
         }
-        if (helpOption)
+        if (helpOption && !parentCommand)
         {
             delete helpOption;
             helpOption = nullptr;
@@ -358,14 +358,14 @@ class Command
         if (!command)
         {
             if (pLogger)
-                pLogger->debug(String("error:") + String("add command failed, command is null"));
+                pLogger->warn(String("add command failed, command is null"));
             return this;
         }
 
         if (findCommand(command->commandName))
         {
             if (pLogger)
-                pLogger->debug(String("[error]:") + String("add command failed, command ") + command->commandName +
+                pLogger->warn(String("add command failed, command ") + command->commandName +
                                String(" already exists"));
             return this;
         }
