@@ -512,114 +512,17 @@ class Command
             return Variant(text);
         };
 
-        auto parseMuiltOptionAlias = [&](const String &alias, const String &value = String()) {
-            log(D, String("try parse multi option alias: ") + alias);
-
-            for (auto it = alias.begin(); it != alias.end() - 1; it++)
+        auto parseCommand = [&](const String &name) {
+            log(D, String("try parse command: ") + name);
+            Command *command = findCommand(name);
+            if (!command)
             {
-                char a[2];
-                a[0] = *it;
-                a[1] = '\0';
-                Option *opt = findOptionByAlias(a);
-                if (!opt)
-                {
-                    log(W, String("option alias ") + a + String(" not found"));
-                    continue;
-                }
-                if (opt->valueIsRequired)
-                {
-                    log(E, String("option: ") + opt->name + String(" value is required"));
-                    ++cur;
-                    return false;
-                }
-                opts[opt->name] = Variant();
-                log(D, String("parse multi option alias: ") + a + String(" success"));
+                log(D, name + " is not a sub command");
+                return false;
             }
 
-            char a[2];
-            a[0] = alias.back();
-            a[1] = '\0';
-            Option *opt = findOptionByAlias(a);
-            if (!opt)
-            {
-                log(W, String("option alias ") + a + String(" not founds"));
-                ++cur;
-                return true;
-            }
-
-            Variant v;
-            if (!opt->valueName.empty() || opt == versionOption || opt == helpOption)
-            {
-                if (opt->valueIsRequired)
-                {
-                    // 如果有默认值，优先使用默认值
-                    if (!std::holds_alternative<std::monostate>(opt->defaultValue))
-                    {
-                        log(D, "option: " + opt->name + " use default value");
-                        v = opt->defaultValue;
-                    }
-                    else
-                    {
-                        if (opt->multiValue)
-                        {
-                            std::vector<VariantBase> mv;
-
-                            while (cur + 1 < argc)
-                            {
-                                String arg = argv[cur + 1];
-                                std::smatch res;
-                                if (std::regex_search(arg, res, optionAliasReg) ||
-                                    std::regex_search(arg, res, optionReg))
-                                {
-                                    break;
-                                }
-                                auto nv = getBaseValue(arg);
-                                if (std::holds_alternative<std::monostate>(nv))
-                                {
-                                    pLogger->error(String("option: ") + opt->name + String(" got an invalid value: ") +
-                                                   arg);
-                                    return false;
-                                }
-
-                                ++cur;
-                                mv.push_back(nv);
-                            }
-
-                            if (mv.size() == 0)
-                            {
-                                pLogger->error(String("option: ") + opt->name +
-                                               String(" need a value at lest, but got zero."));
-                                return false;
-                            }
-
-                            v = mv;
-                        }
-                        else
-                        {
-                            String valueText = ++cur < argc ? argv[cur] : "";
-                            std::smatch res;
-                            if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
-                                std::regex_search(valueText, res, optionReg))
-                            {
-                                pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
-                                return false;
-                            }
-
-                            v = getValue(valueText);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (!value.empty())
-                    log(W, String("option: ") + opt->name + String(" does not need a value, but got: ") + value);
-            }
-
-            log(D, String("parse multi option alias: ") + a + String(" success"));
-
-            opts[opt->name] = v;
-            ++cur;
+            log(D, "parse command: " + name + " success");
+            command->parse(argc, argv, ++cur);
             return true;
         };
         auto parseOptionName = [&](const String &name, const String &value = String()) {
@@ -714,18 +617,37 @@ class Command
             cur++;
             return true;
         };
-        auto parseCommand = [&](const String &name) {
-            log(D, String("try parse command: ") + name);
-            Command *command = findCommand(name);
-            if (!command)
+        auto parseMuiltOptionAlias = [&](const String &alias, const String &value = String()) {
+            log(D, String("try parse multi option alias: ") + alias);
+
+            for (auto it = alias.begin(); it != alias.end() - 1; it++)
             {
-                log(D, name + " is not a sub command");
-                return false;
+                char a[2];
+                a[0] = *it;
+                a[1] = '\0';
+                Option *opt = findOptionByAlias(a);
+                if (!opt)
+                {
+                    log(W, String("option alias ") + a + String(" not found"));
+                    continue;
+                }
+                if (!parseOptionName(opt->name))
+                    return false;
             }
 
-            log(D, "parse command: " + name + " success");
-            command->parse(argc, argv, ++cur);
-            return true;
+            // 最后一个别名特殊处理，因为它可以带参数
+            char a[2];
+            a[0] = alias.back();
+            a[1] = '\0';
+            Option *opt = findOptionByAlias(a);
+            if (!opt)
+            {
+                log(W, String("option alias ") + a + String(" not founds"));
+                ++cur;
+                return true;
+            }
+
+            return parseOptionName(opt->name, value);
         };
         auto parseArgument = [&](const String &arg) {
             log(D, String("try parse argument: ") + arg);
