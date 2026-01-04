@@ -40,6 +40,7 @@ using Variant = std::variant<std::monostate, int, double, String, bool, std::vec
 template <typename K, typename V> using Map = std::map<K, V>;
 template <typename T> using Vector = std::vector<T>;
 using Action = std::function<void(Vector<Variant> args, Map<String, Variant> opts)>;
+using ActionThis = std::function<void(class Command* cmd, Vector<Variant> args, Map<String, Variant> opts)>;
 
 class FinialRelease
 {
@@ -432,6 +433,17 @@ class Command
         actionCallback = cb;
         return this;
     }
+    virtual Command *action(const ActionThis &cb)
+    {
+        if (!cb)
+        {
+            if (pLogger)
+                pLogger->debug(String("[error]:") + String("action callback is null"));
+        }
+
+        actionCallbackThis = cb;
+        return this;
+    }
 
     /**
      * @param argc
@@ -763,7 +775,10 @@ class Command
         if (actionCallback)
         {
             actionCallback(args, opts);
-            return;
+        }
+        else if (actionCallbackThis)
+        {
+            actionCallbackThis(this, args, opts);
         }
     }
 
@@ -870,6 +885,7 @@ class Command
     String commandName;
     String commandDescription;
     Action actionCallback;
+    ActionThis actionCallbackThis;
     Option *versionOption;
     Option *helpOption;
     Command *parentCommand;
