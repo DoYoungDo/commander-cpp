@@ -227,8 +227,8 @@ class Command
                 for (const auto arg : cmd->arguments)
                 {
                     argumentText +=
-                        " " + (arg->isMultiValue ? "<" + arg->name + (arg->valueIsRequired ? "..." : "") + ">"
-                                                 : "[" + arg->name + (arg->valueIsRequired ? "..." : "") + "]");
+                        " " + (arg->valueIsRequired ? "<" + arg->name + (arg->isMultiValue ? "..." : "") + ">"
+                                                 : "[" + arg->name + (arg->isMultiValue ? "..." : "") + "]");
                 }
                 if (cmd->arguments.size())
                     out << argumentText;
@@ -873,7 +873,7 @@ class Command
             Argument *arg = new Argument;
             arg->name = argName;
             arg->isMultiValue = !res.str(2).empty() || !res.str(4).empty();
-            arg->valueIsRequired = !res.str(1).empty() || !res.str(3).empty();
+            arg->valueIsRequired = !res.str(3).empty();
             return arg;
         }
 
