@@ -552,51 +552,61 @@ class Command
             {
                 if (opt->valueIsRequired)
                 {
-                    if (opt->multiValue)
+                    // 如果有默认值，优先使用默认值
+                    if (!std::holds_alternative<std::monostate>(opt->defaultValue))
                     {
-                        std::vector<VariantBase> mv;
-
-                        while (cur + 1 < argc)
-                        {
-                            String arg = argv[cur + 1];
-                            std::smatch res;
-                            if (std::regex_search(arg, res, optionAliasReg) || std::regex_search(arg, res, optionReg))
-                            {
-                                break;
-                            }
-                            auto nv = getBaseValue(arg);
-                            if (std::holds_alternative<std::monostate>(nv))
-                            {
-                                pLogger->error(String("option: ") + opt->name + String(" got an invalid value: ") +
-                                               arg);
-                                return false;
-                            }
-
-                            ++cur;
-                            mv.push_back(nv);
-                        }
-
-                        if (mv.size() == 0)
-                        {
-                            pLogger->error(String("option: ") + opt->name +
-                                           String(" need a value at lest, but got zero."));
-                            return false;
-                        }
-
-                        v = mv;
+                        log(D, "option: " + opt->name + " use default value");
+                        v = opt->defaultValue;
                     }
                     else
                     {
-                        String valueText = ++cur < argc ? argv[cur] : "";
-                        std::smatch res;
-                        if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
-                            std::regex_search(valueText, res, optionReg))
+                        if (opt->multiValue)
                         {
-                            pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
-                            return false;
-                        }
+                            std::vector<VariantBase> mv;
 
-                        v = getValue(valueText);
+                            while (cur + 1 < argc)
+                            {
+                                String arg = argv[cur + 1];
+                                std::smatch res;
+                                if (std::regex_search(arg, res, optionAliasReg) ||
+                                    std::regex_search(arg, res, optionReg))
+                                {
+                                    break;
+                                }
+                                auto nv = getBaseValue(arg);
+                                if (std::holds_alternative<std::monostate>(nv))
+                                {
+                                    pLogger->error(String("option: ") + opt->name + String(" got an invalid value: ") +
+                                                   arg);
+                                    return false;
+                                }
+
+                                ++cur;
+                                mv.push_back(nv);
+                            }
+
+                            if (mv.size() == 0)
+                            {
+                                pLogger->error(String("option: ") + opt->name +
+                                               String(" need a value at lest, but got zero."));
+                                return false;
+                            }
+
+                            v = mv;
+                        }
+                        else
+                        {
+                            String valueText = ++cur < argc ? argv[cur] : "";
+                            std::smatch res;
+                            if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
+                                std::regex_search(valueText, res, optionReg))
+                            {
+                                pLogger->error(String("option: ") + opt->name + String(" need a value, but got zero."));
+                                return false;
+                            }
+
+                            v = getValue(valueText);
+                        }
                     }
                 }
             }
@@ -623,65 +633,74 @@ class Command
             }
 
             Variant v;
+
             if (!opt->valueName.empty() || opt == versionOption || opt == helpOption)
             {
                 if (opt->valueIsRequired)
                 {
-                    if (opt->multiValue)
+                    if (!std::holds_alternative<std::monostate>(opt->defaultValue))
                     {
-                        std::vector<VariantBase> mv;
-                        if (!value.empty())
-                        {
-                            mv.push_back(getBaseValue(value));
-                        }
-                        else
-                        {
-                            while (++cur < argc)
-                            {
-                                String arg = argv[cur];
-                                std::smatch res;
-                                if (std::regex_search(arg, res, optionAliasReg) ||
-                                    std::regex_search(arg, res, optionReg))
-                                {
-                                    --cur;
-                                    break;
-                                }
-                                auto nv = getBaseValue(arg);
-                                if (std::holds_alternative<std::monostate>(nv))
-                                    continue;
-
-                                mv.push_back(nv);
-                            }
-                        }
-
-                        if (mv.size() == 0)
-                        {
-                            log(E, String("option: ") + opt->name + String(" need a value at lest, but got zero."));
-                            ++cur;
-                            return false;
-                        }
-
-                        v = mv;
+                        log(D, "option: " + opt->name + " use default value");
+                        v = opt->defaultValue;
                     }
                     else
                     {
-                        String valueText = !value.empty() ? value : ++cur < argc ? argv[cur] : "";
-                        std::smatch res;
-                        if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
-                            std::regex_search(valueText, res, optionReg))
+                        if (opt->multiValue)
                         {
-                            log(E, String("option: ") + opt->name + String(" need a value, but got zero."));
-                            ++cur;
-                            return false;
+                            std::vector<VariantBase> mv;
+                            if (!value.empty())
+                            {
+                                mv.push_back(getBaseValue(value));
+                            }
+                            else
+                            {
+                                while (++cur < argc)
+                                {
+                                    String arg = argv[cur];
+                                    std::smatch res;
+                                    if (std::regex_search(arg, res, optionAliasReg) ||
+                                        std::regex_search(arg, res, optionReg))
+                                    {
+                                        --cur;
+                                        break;
+                                    }
+                                    auto nv = getBaseValue(arg);
+                                    if (std::holds_alternative<std::monostate>(nv))
+                                        continue;
+
+                                    mv.push_back(nv);
+                                }
+                            }
+
+                            if (mv.size() == 0)
+                            {
+                                log(E, String("option: ") + opt->name + String(" need a value at lest, but got zero."));
+                                ++cur;
+                                return false;
+                            }
+
+                            v = mv;
+                        }
+                        else
+                        {
+                            String valueText = !value.empty() ? value : ++cur < argc ? argv[cur] : "";
+                            std::smatch res;
+                            if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
+                                std::regex_search(valueText, res, optionReg))
+                            {
+                                log(E, String("option: ") + opt->name + String(" need a value, but got zero."));
+                                ++cur;
+                                return false;
+                            }
+
+                            v = getValue(valueText);
                         }
 
-                        v = getValue(valueText);
-                    }
-
-                    if (std::holds_alternative<std::monostate>(v))
-                    {
-                        log(E, String("option: ") + opt->name + String("got an invalid value."));
-                        return false;
+                        if (std::holds_alternative<std::monostate>(v))
+                        {
+                            log(E, String("option: ") + opt->name + String("got an invalid value."));
+                            return false;
+                        }
                     }
                 }
             }
