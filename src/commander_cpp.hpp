@@ -758,6 +758,7 @@ class Command
             log(D, String("try parse identifier: ") + arg);
             std::smatch res;
 
+            // 尝试解析子命令
             if (std::regex_search(arg, res, commandReg))
             {
                 // 如果解析到子命令直接就使用子命令的解析了，不再继续当前的解析了
@@ -765,23 +766,26 @@ class Command
                     return;
                 // 否则继续解析
             }
-
-            if (std::regex_search(arg, res, optionAliasReg))
-            {
-                if (parseMuiltOptionAlias(res.str(1), !res.str(2).empty() ? res.str(2) : String()))
-                    continue;
-                return;
-            }
-
+            // 尝试解析选项
             if (std::regex_search(arg, res, optionReg))
             {
                 if (parseOptionName(res.str(1), !res.str(2).empty() ? res.str(2) : String()))
                     continue;
                 return;
             }
-
+            // 尝试解析选项别名
+            if (std::regex_search(arg, res, optionAliasReg))
+            {
+                if (parseMuiltOptionAlias(res.str(1), !res.str(2).empty() ? res.str(2) : String()))
+                    continue;
+                return;
+            }
+            // 尝试解析参数
             if (parseArgument(arg))
                 continue;
+            
+            // 非法标识符，直接结束
+            log(E, "invalid identifier: " + arg);
             return;
         }
 
