@@ -1,30 +1,30 @@
 # Commander-CPP
 
-> [English](README_EN.md) | 中文
+> English | [中文](README.md)
 
-Commander-CPP 是一个仿照 [commander.js](https://github.com/tj/commander.js) 实现的 C++ 命令行解析库。它提供了简洁的链式 API，用于定义命令、选项和参数，支持子命令、默认值、多值选项等功能。
+Commander-CPP is a C++ command-line parsing library inspired by [commander.js](https://github.com/tj/commander.js). It provides a clean, chainable API for defining commands, options, and arguments, with support for subcommands, default values, multi-value options, and more.
 
-## 特性
+## Features
 
-- 🎯 链式 API 设计，简洁易用
-- 📦 单头文件，无外部依赖
-- 🔧 支持选项（单值、多值、布尔值）
-- 📝 支持参数（必需参数、可选参数、多值参数）
-- 🌲 支持子命令和嵌套命令
-- ⚙️ 支持默认值
-- 📖 自动生成帮助信息
-- 🔍 详细的错误处理和日志系统
-- 🎨 支持选项别名和组合（如 `-abc`）
+- 🎯 Chainable API design, simple and easy to use
+- 📦 Single header file, no external dependencies
+- 🔧 Support for options (single-value, multi-value, boolean)
+- 📝 Support for arguments (required arguments, optional arguments, multi-value arguments)
+- 🌲 Support for subcommands and nested commands
+- ⚙️ Support for default values
+- 📖 Automatic help generation
+- 🔍 Detailed error handling and logging system
+- 🎨 Support for option aliases and combinations (like `-abc`)
 
-## 安装
+## Installation
 
-将 `commander_cpp.hpp` 文件复制到您的项目中，并在代码中包含它：
+Copy the `commander_cpp.hpp` file to your project and include it in your code:
 
 ```cpp
 #include "commander_cpp.hpp"
 ```
 
-## 快速开始
+## Quick Start
 
 ```cpp
 #include "commander_cpp.hpp"
@@ -33,8 +33,8 @@ using namespace COMMANDER_CPP;
 int main(int argc, char **argv) {
     Command("example")
         .version("1.0.0")
-        ->description("一个示例命令行应用")
-        ->option("-n --name <name>", "你的名字")
+        ->description("An example command-line application")
+        ->option("-n --name <name>", "Your name")
         ->action([](Vector<Variant> args, Map<String, Variant> opts) {
             if (opts.find("name") != opts.end()) {
                 std::cout << "Hello, " << std::get<String>(opts["name"]) << "!" << std::endl;
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
 }
 ```
 
-运行示例：
+Usage example:
 
 ```bash
 $ ./example -n Alice
@@ -56,54 +56,54 @@ Hello, Alice!
 $ ./example --help
 Usage: example [options]
 
-一个示例命令行应用
+An example command-line application
 
 Options:
   -V, --version       out put version number.
-  -n, --name <name>   你的名字
+  -n, --name <name>   Your name
   -h, --help
 ```
 
-## 核心概念
+## Core Concepts
 
-### 选项语法
+### Option Syntax
 
-选项使用 `-` 或 `--` 前缀，支持以下格式：
+Options use `-` or `--` prefixes and support the following formats:
 
-- `--option` - 布尔选项
-- `-o --option` - 带别名的布尔选项
-- `--option <value>` - 必需值的选项
-- `--option [value]` - 可选值的选项
-- `--option <values...>` - 多值选项（至少一个）
-- `--option [values...]` - 多值选项（可选）
+- `--option` - Boolean option
+- `-o --option` - Boolean option with alias
+- `--option <value>` - Option with required value
+- `--option [value]` - Option with optional value
+- `--option <values...>` - Multi-value option (at least one)
+- `--option [values...]` - Multi-value option (optional)
 
-### 参数语法
+### Argument Syntax
 
-参数不使用前缀，支持以下格式：
+Arguments don't use prefixes and support the following formats:
 
-- `<arg>` - 必需参数
-- `[arg]` - 可选参数
-- `<args...>` - 多值必需参数
-- `[args...]` - 多值可选参数
+- `<arg>` - Required argument
+- `[arg]` - Optional argument
+- `<args...>` - Multi-value required arguments
+- `[args...]` - Multi-value optional arguments
 
-## 详细用法
+## Detailed Usage
 
-### 1. 定义选项
+### 1. Defining Options
 
 ```cpp
 Command("app")
-    .option("-s --single <value>", "单值选项")
-    ->option("-m --multi <values...>", "多值选项")
-    ->option("-b --boolean", "布尔选项")
-    ->option("-n --number <num>", "数字选项", 42)  // 带默认值
+    .option("-s --single <value>", "Single-value option")
+    ->option("-m --multi <values...>", "Multi-value option")
+    ->option("-b --boolean", "Boolean option")
+    ->option("-n --number <num>", "Number option", 42)  // With default value
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
-        // 获取单值选项
+        // Get single-value option
         if (opts.find("single") != opts.end()) {
             auto value = std::get<String>(opts["single"]);
             std::cout << "Single: " << value << std::endl;
         }
         
-        // 获取多值选项
+        // Get multi-value option
         if (opts.find("multi") != opts.end()) {
             auto values = std::get<std::vector<VariantBase>>(opts["multi"]);
             for (const auto &val : values) {
@@ -112,29 +112,29 @@ Command("app")
             std::cout << std::endl;
         }
         
-        // 获取布尔选项
+        // Get boolean option
         if (opts.find("boolean") != opts.end()) {
             std::cout << "Boolean enabled" << std::endl;
         }
     });
 ```
 
-使用示例：
+Usage examples:
 
 ```bash
 $ ./app -s value1
 $ ./app --single value1
 $ ./app -m file1.txt file2.txt file3.txt
 $ ./app -b
-$ ./app -bs value1  # 组合选项
+$ ./app -bs value1  # Combined options
 ```
 
-### 2. 定义参数
+### 2. Defining Arguments
 
 ```cpp
 Command("copy")
-    .argument("<from>", "源文件")
-    ->argument("[to]", "目标文件", "default.txt")  // 带默认值
+    .argument("<from>", "Source file")
+    ->argument("[to]", "Target file", "default.txt")  // With default value
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         auto from = std::get<String>(args[0]);
         std::cout << "From: " << from << std::endl;
@@ -146,21 +146,21 @@ Command("copy")
     });
 ```
 
-使用示例：
+Usage examples:
 
 ```bash
 $ ./copy source.txt
 $ ./copy source.txt target.txt
 ```
 
-### 3. 定义子命令
+### 3. Defining Subcommands
 
 ```cpp
 Command("git")
     .version("1.0.0")
-    ->description("Git 命令行工具")
-    ->command("add <files...>", "添加文件到暂存区")
-    ->option("-f --force", "强制添加")
+    ->description("Git command-line tool")
+    ->command("add <files...>", "Add files to staging area")
+    ->option("-f --force", "Force add")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         auto files = std::get<std::vector<VariantBase>>(args[0]);
         std::cout << "Adding files..." << std::endl;
@@ -168,9 +168,9 @@ Command("git")
             std::cout << "  " << std::get<String>(file) << std::endl;
         }
     });
-    // 添加另一个子命令
-    ->command("commit", "提交更改")
-    ->option("-m --message <msg>", "提交信息")
+    // Add another subcommand
+    ->command("commit", "Commit changes")
+    ->option("-m --message <msg>", "Commit message")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         if (opts.find("message") != opts.end()) {
             auto msg = std::get<String>(opts["message"]);
@@ -179,7 +179,7 @@ Command("git")
     });
 ```
 
-使用示例：
+Usage examples:
 
 ```bash
 $ ./git add file1.txt file2.txt
@@ -187,18 +187,18 @@ $ ./git add -f file.txt
 $ ./git commit -m "Initial commit"
 ```
 
-### 4. 类型支持
+### 4. Type Support
 
-Commander-CPP 自动识别并转换以下类型：
+Commander-CPP automatically recognizes and converts the following types:
 
 ```cpp
 Command("types")
-    .option("-i --int <num>", "整数")
-    ->option("-d --double <num>", "浮点数")
-    ->option("-b --bool <val>", "布尔值")
-    ->option("-s --string <text>", "字符串")
+    .option("-i --int <num>", "Integer")
+    ->option("-d --double <num>", "Double")
+    ->option("-b --bool <val>", "Boolean")
+    ->option("-s --string <text>", "String")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
-        // 自动类型转换
+        // Automatic type conversion
         auto intVal = std::get<int>(opts["int"]);        // 42
         auto doubleVal = std::get<double>(opts["double"]); // 3.14
         auto boolVal = std::get<bool>(opts["bool"]);     // true/false
@@ -206,13 +206,13 @@ Command("types")
     });
 ```
 
-使用示例：
+Usage examples:
 
 ```bash
 $ ./types -i 42 -d 3.14 -b true -s hello
 ```
 
-### 5. 自定义日志
+### 5. Custom Logging
 
 ```cpp
 class CustomLogger : public Logger {
@@ -238,21 +238,21 @@ class CustomLogger : public Logger {
 int main(int argc, char **argv) {
     CustomLogger logger;
     Command("app", &logger)
-        .option("-v --verbose", "详细输出")
+        .option("-v --verbose", "Verbose output")
         ->parse(argc, argv);
     return 0;
 }
 ```
 
-### 6. 选项组合
+### 6. Option Combinations
 
-支持短选项组合（类似 `tar -xzvf`）：
+Support for short option combinations (like `tar -xzvf`):
 
 ```cpp
 Command("app")
-    .option("-a --option-a", "选项 A")
-    ->option("-b --option-b", "选项 B")
-    ->option("-c --option-c <value>", "选项 C")
+    .option("-a --option-a", "Option A")
+    ->option("-b --option-b", "Option B")
+    ->option("-c --option-c <value>", "Option C")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         if (opts.find("option-a") != opts.end()) {
             std::cout << "A enabled" << std::endl;
@@ -263,16 +263,16 @@ Command("app")
     });
 ```
 
-使用示例：
+Usage examples:
 
 ```bash
-$ ./app -ab           # 同时启用 A 和 B
-$ ./app -abc value    # 启用 A、B，并为 C 设置值
+$ ./app -ab           # Enable both A and B
+$ ./app -abc value    # Enable A, B, and set value for C
 ```
 
-## 完整示例
+## Complete Example
 
-基于 `main.cpp` 中的集成测试，这是一个完整的待办事项应用示例：
+Based on the integration test in `main.cpp`, here's a complete todo application example:
 
 ```cpp
 #include "commander_cpp.hpp"
@@ -281,12 +281,12 @@ using namespace COMMANDER_CPP;
 int main(int argc, char **argv) {
     Command("todo")
         .version("1.0.0")
-        ->description("待办事项管理工具")
+        ->description("Todo management tool")
         
-        // 添加子命令
-        ->command("add <todos...>", "添加待办事项")
-        ->option("-d --done", "标记为已完成")
-        ->option("-p --priority", "设置为高优先级")
+        // Add subcommand
+        ->command("add <todos...>", "Add todo items")
+        ->option("-d --done", "Mark as completed")
+        ->option("-p --priority", "Set as high priority")
         ->action([](Vector<Variant> args, Map<String, Variant> opts) {
             auto todos = std::get<std::vector<VariantBase>>(args[0]);
             for (const auto &todo : todos) {
@@ -301,11 +301,11 @@ int main(int argc, char **argv) {
             }
         });
     
-    // 删除子命令
+    // Remove subcommand
     Command("todo")
-        .command("rm", "删除待办事项")
-        ->argument("<index...>", "待办事项索引")
-        ->option("-l --level <value>", "删除级别")
+        .command("rm", "Remove todo items")
+        ->argument("<index...>", "Todo item indices")
+        ->option("-l --level <value>", "Removal level")
         ->action([](Vector<Variant> args, Map<String, Variant> opts) {
             auto indices = std::get<std::vector<VariantBase>>(args[0]);
             for (const auto &idx : indices) {
@@ -318,12 +318,12 @@ int main(int argc, char **argv) {
 }
 ```
 
-使用示例：
+Usage examples:
 
 ```bash
-$ ./todo add "学习 C++" "写代码" -p
-Added: 学习 C++ [HIGH]
-Added: 写代码 [HIGH]
+$ ./todo add "Learn C++" "Write code" -p
+Added: Learn C++ [HIGH]
+Added: Write code [HIGH]
 
 $ ./todo rm 1 2
 Removed: 1
@@ -332,81 +332,81 @@ Removed: 2
 $ ./todo --help
 Usage: todo [options]
 
-待办事项管理工具
+Todo management tool
 
 Options:
   -V, --version       out put version number.
   -h, --help
 
 Commands:
-  add [options] <todos...>  添加待办事项
-  rm [options] <index...>   删除待办事项
+  add [options] <todos...>  Add todo items
+  rm [options] <index...>   Remove todo items
 ```
 
-## 测试
+## Testing
 
-项目包含完整的测试套件（见 `src/main.cpp`），覆盖以下场景：
+The project includes a comprehensive test suite (see `src/main.cpp`) covering the following scenarios:
 
-| 测试用例 | 描述 |
-|---------|------|
-| VersionTest | 验证版本信息输出 |
-| DescriptionTest | 验证帮助信息生成 |
-| OptionTest | 测试单值和多值选项解析 |
-| ArgumentTest | 测试必需和可选参数 |
-| SubCommandTest | 测试子命令功能 |
-| DefaultValueTest | 测试默认值机制 |
-| MultiValueOptionTest | 测试多值选项解析 |
-| ErrorHandlingTest | 测试错误处理 |
-| ComplexOptionTest | 测试选项组合 |
-| IntegratedTest | 集成测试 |
+| Test Case | Description |
+|-----------|-------------|
+| VersionTest | Verify version information output |
+| DescriptionTest | Verify help information generation |
+| OptionTest | Test single-value and multi-value option parsing |
+| ArgumentTest | Test required and optional arguments |
+| SubCommandTest | Test subcommand functionality |
+| DefaultValueTest | Test default value mechanism |
+| MultiValueOptionTest | Test multi-value option parsing |
+| ErrorHandlingTest | Test error handling |
+| ComplexOptionTest | Test option combinations |
+| IntegratedTest | Integration test |
 
-运行测试：
+Run tests:
 
 ```bash
 $ xmake
 $ ./build/macosx/arm64/debug/commander-cpp
-$ ./build/macosx/arm64/debug/commander-cpp -i  # 显示详细信息
+$ ./build/macosx/arm64/debug/commander-cpp -i  # Show detailed information
 ```
 
-## 构建
+## Build
 
-项目使用 [xmake](https://xmake.io/) 构建：
+The project uses [xmake](https://xmake.io/) for building:
 
 ```bash
-# 安装 xmake
+# Install xmake
 $ brew install xmake
 
-# 构建项目
+# Build project
 $ xmake
 
-# 运行测试
+# Run tests
 $ xmake run commander-cpp
 ```
 
-## 目录结构
+## Directory Structure
 
 ```
 commander-cpp/
 ├── src/
-│   ├── commander_cpp.hpp   # 核心库（单头文件）
-│   └── main.cpp            # 测试用例
-├── build/                  # 构建输出
-├── xmake.lua              # 构建配置
-└── README.md              # 本文档
+│   ├── commander_cpp.hpp   # Core library (single header file)
+│   └── main.cpp            # Test cases
+├── build/                  # Build output
+├── xmake.lua              # Build configuration
+└── README.md              # This document
 ```
 
-## 注意
+## Requirements
 
-- 支持 C++17 或更高版本
+- Supports C++17 or higher
 
-## 未来计划
+## Future Plans
 
-- [ ] 支持配置文件读取
+- [ ] Support for configuration file reading
 
-## 贡献
+## Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Issues and Pull Requests are welcome!
 
-## 许可证
+## License
 
 MIT License
