@@ -31,9 +31,9 @@ using namespace COMMANDER_CPP;
 int main(int argc, char **argv) {
     Command("example")
         .version("1.0.0")
-        .description("一个示例命令行应用")
-        .option("-n --name <name>", "你的名字")
-        .action([](Vector<Variant> args, Map<String, Variant> opts) {
+        ->description("一个示例命令行应用")
+        ->option("-n --name <name>", "你的名字")
+        ->action([](Vector<Variant> args, Map<String, Variant> opts) {
             if (opts.find("name") != opts.end()) {
                 std::cout << "Hello, " << std::get<String>(opts["name"]) << "!" << std::endl;
             } else {
@@ -91,10 +91,10 @@ Options:
 ```cpp
 Command("app")
     .option("-s --single <value>", "单值选项")
-    .option("-m --multi <values...>", "多值选项")
-    .option("-b --boolean", "布尔选项")
-    .option("-n --number <num>", "数字选项", 42)  // 带默认值
-    .action([](Vector<Variant> args, Map<String, Variant> opts) {
+    ->option("-m --multi <values...>", "多值选项")
+    ->option("-b --boolean", "布尔选项")
+    ->option("-n --number <num>", "数字选项", 42)  // 带默认值
+    ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         // 获取单值选项
         if (opts.find("single") != opts.end()) {
             auto value = std::get<String>(opts["single"]);
@@ -132,8 +132,8 @@ $ ./app -bs value1  # 组合选项
 ```cpp
 Command("copy")
     .argument("<from>", "源文件")
-    .argument("[to]", "目标文件", "default.txt")  // 带默认值
-    .action([](Vector<Variant> args, Map<String, Variant> opts) {
+    ->argument("[to]", "目标文件", "default.txt")  // 带默认值
+    ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         auto from = std::get<String>(args[0]);
         std::cout << "From: " << from << std::endl;
         
@@ -156,8 +156,8 @@ $ ./copy source.txt target.txt
 ```cpp
 Command("git")
     .version("1.0.0")
-    .description("Git 命令行工具")
-    .command("add <files...>", "添加文件到暂存区")
+    ->description("Git 命令行工具")
+    ->command("add <files...>", "添加文件到暂存区")
     ->option("-f --force", "强制添加")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         auto files = std::get<std::vector<VariantBase>>(args[0]);
@@ -192,10 +192,10 @@ Commander-CPP 自动识别并转换以下类型：
 ```cpp
 Command("types")
     .option("-i --int <num>", "整数")
-    .option("-d --double <num>", "浮点数")
-    .option("-b --bool <val>", "布尔值")
-    .option("-s --string <text>", "字符串")
-    .action([](Vector<Variant> args, Map<String, Variant> opts) {
+    ->option("-d --double <num>", "浮点数")
+    ->option("-b --bool <val>", "布尔值")
+    ->option("-s --string <text>", "字符串")
+    ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         // 自动类型转换
         auto intVal = std::get<int>(opts["int"]);        // 42
         auto doubleVal = std::get<double>(opts["double"]); // 3.14
@@ -237,7 +237,7 @@ int main(int argc, char **argv) {
     CustomLogger logger;
     Command("app", &logger)
         .option("-v --verbose", "详细输出")
-        .parse(argc, argv);
+        ->parse(argc, argv);
     return 0;
 }
 ```
@@ -249,9 +249,9 @@ int main(int argc, char **argv) {
 ```cpp
 Command("app")
     .option("-a --option-a", "选项 A")
-    .option("-b --option-b", "选项 B")
-    .option("-c --option-c <value>", "选项 C")
-    .action([](Vector<Variant> args, Map<String, Variant> opts) {
+    ->option("-b --option-b", "选项 B")
+    ->option("-c --option-c <value>", "选项 C")
+    ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         if (opts.find("option-a") != opts.end()) {
             std::cout << "A enabled" << std::endl;
         }
@@ -279,10 +279,10 @@ using namespace COMMANDER_CPP;
 int main(int argc, char **argv) {
     Command("todo")
         .version("1.0.0")
-        .description("待办事项管理工具")
+        ->description("待办事项管理工具")
         
         // 添加子命令
-        .command("add <todos...>", "添加待办事项")
+        ->command("add <todos...>", "添加待办事项")
         ->option("-d --done", "标记为已完成")
         ->option("-p --priority", "设置为高优先级")
         ->action([](Vector<Variant> args, Map<String, Variant> opts) {
