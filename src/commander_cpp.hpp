@@ -258,7 +258,7 @@ class Command
                 out << std::endl << "Arguments:" << std::endl;
                 for (const auto arg : arguments)
                 {
-                    out << "  " << arg->name << (arg->valueIsRequired ? "..." : "") << "  " << arg->desc << std::endl;
+                    out << "  " << arg->name << (arg->isMultiValue ? "..." : "") << "  " << arg->desc << std::endl;
                 }
             }
 
@@ -391,6 +391,8 @@ class Command
         Argument *arg = Argument::create(name, pLogger);
         if (!arg)
         {
+            if(pLogger)
+                pLogger->error(String("argument ") + name + String(" create failed"));
             return this;
         }
 
@@ -410,7 +412,7 @@ class Command
         if (!opt)
         {
             if (pLogger)
-                pLogger->debug(String("[error]:") + String("option ") + flag + String(" create failed"));
+                pLogger->error(String("option ") + flag + String(" create failed"));
             return this;
         }
 
@@ -858,6 +860,8 @@ class Command
             std::smatch res;
             if (!std::regex_search(name, res, reg))
             {
+                if (logger)
+                    logger->warn(String("invalid argument name: ") + name); 
                 return nullptr;
             }
             String argName = !res.str(1).empty() ? res.str(1) : !res.str(3).empty() ? res.str(3) : "";
