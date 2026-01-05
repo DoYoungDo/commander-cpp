@@ -785,6 +785,9 @@ class Command
     }
 
   public:
+    /*
+     * 通过名称查找子命令
+     */
     Command *findCommand(const String &name)
     {
         for (const auto cmd : subCommands)
@@ -796,6 +799,9 @@ class Command
         }
         return nullptr;
     }
+    /**
+     * 获取日志操作对象指针
+     */
     Logger* logger()
     {
         return pLogger;
