@@ -269,8 +269,8 @@ class Command
                     out << "  " << (opt->alias.empty() ? "" : ("-" + opt->alias + ", ")) << ("--" + opt->name);
                     if (!opt->valueName.empty())
                         out << " "
-                            << (opt->multiValue ? "<" + opt->valueName + (opt->valueIsRequired ? "..." : "") + ">"
-                                                : "[" + opt->valueName + (opt->valueIsRequired ? "..." : "") + "]");
+                            << (opt->valueIsRequired ? "<" + opt->valueName + (opt->multiValue ? "..." : "") + ">"
+                                                : "[" + opt->valueName + (opt->multiValue ? "..." : "") + "]");
                     out << "  " << opt->desc;
                     if (!opt->valueName.empty())
                     {
