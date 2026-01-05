@@ -796,6 +796,10 @@ class Command
         }
         return nullptr;
     }
+    Logger* logger()
+    {
+        return pLogger;
+    }
 
   private:
     class Option
