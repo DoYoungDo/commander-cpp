@@ -81,6 +81,7 @@ void doActionConfInit(Command *cmd, Vector<Variant> args, Map<String, Variant> o
         }
     }
 
+    cmd->logger()->print("请输入存储目录");
     String text;
     std::cin >> text;
 }
