@@ -136,7 +136,7 @@ void doActionAdd(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
     Configer cfg;
     if (!cfg.checkLocal())
     {
-        cmd->logger()->error("当前目录未初始化为todo仓库，请先运行todo conf命令进行初始化。");
+        cmd->logger()->error("当前目录未初始化为todo仓库，请先运行todo conf init命令进行初始化。");
         return;
     }
 }
