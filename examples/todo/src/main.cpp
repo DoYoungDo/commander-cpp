@@ -1,13 +1,21 @@
 #include <iostream>
+#include <filesystem>
+#include <fstream>
+
 #include "../../../src/commander_cpp.hpp"
+#include "../../third/nlohmann/json.hpp"
 
 using namespace COMMANDER_CPP;
+using json = nlohmann::json;
+namespace fs = std::filesystem;
+using String = std::string;
 
-
-class TestLogger : public Logger
+class TodoLogger : public Logger
 {
   public:
-  TestLogger(){}
+    TodoLogger()
+    {
+    }
     // virtual Logger *debug(const String &msg)
     // {
     //     std::cout << "DEBUG: " << msg << std::endl;
@@ -28,18 +36,98 @@ class TestLogger : public Logger
         std::cout << msg << std::endl;
         return this;
     }
+
+    void printHelp(Command *cmd)
+    {
+        char *argv[] = {(char *)"--help"};
+        cmd->parse(1, argv, 0);
+    }
 };
 
 class Configer
 {
   public:
+    struct Setting
+    {
+        String table = "default";
+        String repository;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Configer::Setting, table, repository)
+    } setting;
+    
     Configer()
     {
     }
 
     bool checkLocal()
     {
-        return false;
+        String appDataDir = getAppDataDir();
+        if (!fs::exists(appDataDir))
+        {
+            return false;
+        }
+        String configPath = getConfigPath();
+        if (!fs::exists(configPath))
+        {
+            return false;
+        }
+        std::ifstream f(configPath);
+        json data = json::parse(f);
+
+        try
+        {
+            data.get_to(setting);
+
+            if(setting.repository.empty())
+            {
+                return false;
+            }
+        }
+        catch(const std::exception& e)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    bool initLocal(const String& table, const String& repository, String& errMsg)
+    {
+        String appDataDir = getAppDataDir();
+        if (!fs::exists(appDataDir) && !fs::create_directories(appDataDir))
+        {
+            errMsg = "创建缓存目录失败，请检查权限。";
+            return false;
+        }
+
+        if (!fs::exists(repository) && !fs::create_directories(repository))
+        {
+            errMsg = "创建存储目录失败，请检查权限。";
+            return false;
+        }
+
+        setting.repository = repository;
+        setting.table = table;
+
+        json data = setting;
+        String dataText = data.dump(4);
+        std::ofstream out(getConfigPath());
+        out << dataText;
+
+        return true;
+    }
+
+  private:
+    inline String getAppDataLocalDir()
+    {
+        return "/Users/doyoung/Library/Application Support";
+    }
+    inline String getAppDataDir()
+    {
+        return getAppDataLocalDir() + "/todo";
+    }
+    inline String getConfigPath()
+    {
+        return getAppDataDir() + "/setting.json";
     }
 };
 
@@ -64,15 +152,13 @@ void doActionList(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 void doActionMv(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 {
 }
-void doActionConf(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
-{
-}
 void doActionConfInit(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 {
+    Logger* logger = cmd->logger();
     Configer cfg;
     if (cfg.checkLocal())
     {
-        cmd->logger()->print("已经初始化过，是否重新初始化？(y/n)");
+        logger->warn("已经初始化过，是否重新初始化？(y/n)");
         String text;
         std::cin >> text;
         if (text != "y")
@@ -81,9 +167,23 @@ void doActionConfInit(Command *cmd, Vector<Variant> args, Map<String, Variant> o
         }
     }
 
-    cmd->logger()->print("请输入存储目录");
-    String text;
-    std::cin >> text;
+    logger->print("请输入存储目录");
+    String repository;
+    std::cin >> repository;
+
+    logger->print("请输入表名");
+    String table;
+    std::cin >> table;
+
+    String errMsg;
+    if (!cfg.initLocal(table, repository, errMsg))
+    {
+        logger->error("初始化失败：" + errMsg);
+    }
+    else
+    {
+        logger->print("初始化成功。");
+    }
 }
 
 int main(int argc, char **argv)
@@ -107,7 +207,7 @@ int main(int argc, char **argv)
     conf  配置。
 
     */
-    auto logger = new TestLogger();
+    auto logger = new TodoLogger();
     Command("todo", logger)
         .version("0.0.1")
         ->description("待办。")
@@ -147,10 +247,11 @@ int main(int argc, char **argv)
                          ->addCommand((new Command("init", logger))
                                          ->description("初始化todo仓库。")
                                          ->action(doActionConfInit))
-                         ->action(doActionConf))
+                         ->action([](Command *cmd, Vector<Variant> args, Map<String, Variant> opts) {
+                             static_cast<TodoLogger *>(cmd->logger())->printHelp(cmd);
+                         }))
         ->action([](Command *cmd, Vector<Variant> args, Map<String, Variant> opts) {
-            char* argv[] = {(char*)"todo", (char*)"--help"};
-            cmd->parse(2, argv);
+            static_cast<TodoLogger *>(cmd->logger())->printHelp(cmd);
         })
         ->parse(argc, argv);
     return 0;
