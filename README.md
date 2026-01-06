@@ -156,9 +156,11 @@ $ ./copy source.txt target.txt
 ### 3. 定义子命令
 
 ```cpp
-Command("git")
-    .version("1.0.0")
+    Command cmd("git");
+
+    cmd.version("1.0.0")
     ->description("Git 命令行工具")
+    // 添加一个子命令，返回子命令指针，继续链式调用时，是向子命令添加选项或参数
     ->command("add <files...>", "添加文件到暂存区")
     ->option("-f --force", "强制添加")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
@@ -168,8 +170,9 @@ Command("git")
             std::cout << "  " << std::get<String>(file) << std::endl;
         }
     });
+
     // 添加另一个子命令
-    ->command("commit", "提交更改")
+    cmd.command("commit", "提交更改")
     ->option("-m --message <msg>", "提交信息")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         if (opts.find("message") != opts.end()) {
@@ -279,41 +282,40 @@ $ ./app -abc value    # 启用 A、B，并为 C 设置值
 using namespace COMMANDER_CPP;
 
 int main(int argc, char **argv) {
-    Command("todo")
-        .version("1.0.0")
-        ->description("待办事项管理工具")
-        
-        // 添加子命令
-        ->command("add <todos...>", "添加待办事项")
-        ->option("-d --done", "标记为已完成")
-        ->option("-p --priority", "设置为高优先级")
-        ->action([](Vector<Variant> args, Map<String, Variant> opts) {
-            auto todos = std::get<std::vector<VariantBase>>(args[0]);
-            for (const auto &todo : todos) {
-                std::cout << "Added: " << std::get<String>(todo);
-                if (opts.find("done") != opts.end()) {
-                    std::cout << " [DONE]";
-                }
-                if (opts.find("priority") != opts.end()) {
-                    std::cout << " [HIGH]";
-                }
-                std::cout << std::endl;
-            }
-        });
+    Command cmd("todo");
+
+    cmd.version("1.0.0")
+    ->description("待办事项管理工具")
     
-    // 删除子命令
-    Command("todo")
-        .command("rm", "删除待办事项")
-        ->argument("<index...>", "待办事项索引")
-        ->option("-l --level <value>", "删除级别")
-        ->action([](Vector<Variant> args, Map<String, Variant> opts) {
-            auto indices = std::get<std::vector<VariantBase>>(args[0]);
-            for (const auto &idx : indices) {
-                std::cout << "Removed: " << std::get<String>(idx) << std::endl;
+    // 添加子命令
+    ->command("add <todos...>", "添加待办事项")
+    ->option("-d --done", "标记为已完成")
+    ->option("-p --priority", "设置为高优先级")
+    ->action([](Vector<Variant> args, Map<String, Variant> opts) {
+        auto todos = std::get<std::vector<VariantBase>>(args[0]);
+        for (const auto &todo : todos) {
+            std::cout << "Added: " << std::get<String>(todo);
+            if (opts.find("done") != opts.end()) {
+                std::cout << " [DONE]";
             }
-        });
-    
-    Command("todo").parse(argc, argv);
+            if (opts.find("priority") != opts.end()) {
+                std::cout << " [HIGH]";
+            }
+            std::cout << std::endl;
+        }
+    });
+
+    cmd.command("rm", "删除待办事项")
+    ->argument("<index...>", "待办事项索引")
+    ->option("-l --level <value>", "删除级别")
+    ->action([](Vector<Variant> args, Map<String, Variant> opts) {
+        auto indices = std::get<std::vector<VariantBase>>(args[0]);
+        for (const auto &idx : indices) {
+            std::cout << "Removed: " << std::get<String>(idx) << std::endl;
+        }
+    });
+
+    cmd.parse(argc, argv);
     return 0;
 }
 ```
@@ -342,6 +344,8 @@ Commands:
   add [options] <todos...>  添加待办事项
   rm [options] <index...>   删除待办事项
 ```
+
+[更多真实示例...](examples/README.md)
 
 ## 测试
 
@@ -399,7 +403,7 @@ commander-cpp/
 
 - 支持 C++17 或更高版本
 
-## 未来计划
+## 未来
 
 - [ ] 支持配置文件读取
 

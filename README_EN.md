@@ -156,9 +156,11 @@ $ ./copy source.txt target.txt
 ### 3. Defining Subcommands
 
 ```cpp
-Command("git")
-    .version("1.0.0")
+    Command cmd("git");
+
+    cmd.version("1.0.0")
     ->description("Git command-line tool")
+    // Add subcommand, return subcommand pointer
     ->command("add <files...>", "Add files to staging area")
     ->option("-f --force", "Force add")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
@@ -168,8 +170,9 @@ Command("git")
             std::cout << "  " << std::get<String>(file) << std::endl;
         }
     });
+
     // Add another subcommand
-    ->command("commit", "Commit changes")
+    cmd.command("commit", "Commit changes")
     ->option("-m --message <msg>", "Commit message")
     ->action([](Vector<Variant> args, Map<String, Variant> opts) {
         if (opts.find("message") != opts.end()) {
@@ -279,41 +282,40 @@ Based on the integration test in `main.cpp`, here's a complete todo application 
 using namespace COMMANDER_CPP;
 
 int main(int argc, char **argv) {
-    Command("todo")
-        .version("1.0.0")
-        ->description("Todo management tool")
-        
-        // Add subcommand
-        ->command("add <todos...>", "Add todo items")
-        ->option("-d --done", "Mark as completed")
-        ->option("-p --priority", "Set as high priority")
-        ->action([](Vector<Variant> args, Map<String, Variant> opts) {
-            auto todos = std::get<std::vector<VariantBase>>(args[0]);
-            for (const auto &todo : todos) {
-                std::cout << "Added: " << std::get<String>(todo);
-                if (opts.find("done") != opts.end()) {
-                    std::cout << " [DONE]";
-                }
-                if (opts.find("priority") != opts.end()) {
-                    std::cout << " [HIGH]";
-                }
-                std::cout << std::endl;
-            }
-        });
+    Command cmd("todo");
+
+    cmd.version("1.0.0")
+    ->description("Todo management tool")
     
-    // Remove subcommand
-    Command("todo")
-        .command("rm", "Remove todo items")
-        ->argument("<index...>", "Todo item indices")
-        ->option("-l --level <value>", "Removal level")
-        ->action([](Vector<Variant> args, Map<String, Variant> opts) {
-            auto indices = std::get<std::vector<VariantBase>>(args[0]);
-            for (const auto &idx : indices) {
-                std::cout << "Removed: " << std::get<String>(idx) << std::endl;
+    // Add subcommand
+    ->command("add <todos...>", "Add todo items")
+    ->option("-d --done", "Mark as completed")
+    ->option("-p --priority", "Set as high priority")
+    ->action([](Vector<Variant> args, Map<String, Variant> opts) {
+        auto todos = std::get<std::vector<VariantBase>>(args[0]);
+        for (const auto &todo : todos) {
+            std::cout << "Added: " << std::get<String>(todo);
+            if (opts.find("done") != opts.end()) {
+                std::cout << " [DONE]";
             }
-        });
+            if (opts.find("priority") != opts.end()) {
+                std::cout << " [HIGH]";
+            }
+            std::cout << std::endl;
+        }
+    });
+
+    cmd.command("rm", "Remove todo items")
+    ->argument("<index...>", "Todo item indices")
+    ->option("-l --level <value>", "Removal level")
+    ->action([](Vector<Variant> args, Map<String, Variant> opts) {
+        auto indices = std::get<std::vector<VariantBase>>(args[0]);
+        for (const auto &idx : indices) {
+            std::cout << "Removed: " << std::get<String>(idx) << std::endl;
+        }
+    });
     
-    Command("todo").parse(argc, argv);
+    cmd.parse(argc, argv);
     return 0;
 }
 ```
@@ -342,6 +344,8 @@ Commands:
   add [options] <todos...>  Add todo items
   rm [options] <index...>   Remove todo items
 ```
+
+[more real example...](examples/README_EN.md)
 
 ## Testing
 
@@ -399,7 +403,7 @@ commander-cpp/
 
 - Supports C++17 or higher
 
-## Future Plans
+## Future
 
 - [ ] Support for configuration file reading
 
