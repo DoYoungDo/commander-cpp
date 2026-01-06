@@ -101,9 +101,9 @@ class VersionTest : public Command, public Test
     }
     virtual TestResult test() override
     {
-        char *argv[] = {"testCommand", "--version"};
+        char *argv[] = {(char*)"testCommand", (char*)"--version"};
         this->parse(2, argv);
-        char *argv1[] = {"testCommand", "--V"};
+        char *argv1[] = {(char*)"testCommand", (char*)"--V"};
         this->parse(2, argv1);
 
         return static_cast<LoggerImpl *>(this->pLogger)->result;
@@ -138,11 +138,11 @@ class DescriptionTest : public Command, public Test
     }
     virtual TestResult test() override
     {
-        char *argv[] = {"testCommand"};
+        char *argv[] = {(char*)"testCommand"};
         this->parse(1, argv);
-        char *argv1[] = {"testCommand", "-h"};
+        char *argv1[] = {(char*)"testCommand", (char*)"-h"};
         this->parse(2, argv1);
-        char *argv2[] = {"testCommand", "--help"};
+        char *argv2[] = {(char*)"testCommand", (char*)"--help"};
         this->parse(2, argv2);
 
         return static_cast<LoggerImpl *>(this->pLogger)->result;
@@ -180,7 +180,7 @@ class OptionTest : public Command, public Test
                 }
             };
 
-            char *argv[] = {"testCommand", "-s"};
+            char *argv[] = {(char*)"testCommand", (char*)"-s"};
             this->parse(2, argv);
 
             results.push_back(hasError ? TestResult{true, ""}
@@ -201,7 +201,7 @@ class OptionTest : public Command, public Test
                 }
             };
 
-            char *argv[] = {"testCommand", "-s", "value", "otherValue"};
+            char *argv[] = {(char*)"testCommand", (char*)"-s", (char*)"value", (char*)"otherValue"};
             this->parse(4, argv);
 
             results.push_back(hasError ? TestResult{true, ""}
@@ -243,7 +243,7 @@ class OptionTest : public Command, public Test
                 }
             });
 
-            char *argv[] = {"testCommand", "-s", "value"};
+            char *argv[] = {(char*)"testCommand", (char*)"-s", (char*)"value"};
             this->parse(3, argv);
         } while (false);
 
@@ -296,7 +296,7 @@ class ArgumentTest : public Command, public Test
                 results.push_back(TestResult{true, ""});
             });
 
-            char *argv[] = {"testCommand", "source", "target1"};
+            char *argv[] = {(char*)"testCommand", (char*)"source", (char*)"target1"};
             this->parse(3, argv);
         } while (false);
 
@@ -329,7 +329,7 @@ class ArgumentTest : public Command, public Test
                 results.push_back(TestResult{true, ""});
             });
 
-            char *argv[] = {"testCommand", "source", "target1", "target2"};
+            char *argv[] = {(char*)"testCommand", (char*)"source", (char*)"target1", (char*)"target2"};
             this->parse(4, argv);
         } while (false);
 
@@ -341,7 +341,7 @@ class ArgumentTest : public Command, public Test
                 if (msg == "Command: ArgumentTest's argument: from is required, but got empty.")
                     hasError = true;
             };
-            char *argv[] = {"testCommand"};
+            char *argv[] = {(char*)"testCommand"};
             this->parse(1, argv);
 
             if (!hasError)
@@ -383,7 +383,7 @@ class SubCommandTest : public Command, public Test
                 }
             });
 
-            char *argv[] = {"testCommand", "add", "test.txt"};
+            char *argv[] = {(char*)"testCommand", (char*)"add", (char*)"test.txt"};
             this->parse(3, argv);
 
             results.push_back(addCommandExecuted ? TestResult{true, ""} : TestResult{false, "add子命令未正确执行"});
@@ -402,7 +402,7 @@ class SubCommandTest : public Command, public Test
                 }
             });
 
-            char *argv[] = {"testCommand", "remove", "test.txt"};
+            char *argv[] = {(char*)"testCommand", (char*)"remove", (char*)"test.txt"};
             this->parse(3, argv);
 
             results.push_back(removeCommandExecuted ? TestResult{true, ""}
@@ -418,7 +418,7 @@ class SubCommandTest : public Command, public Test
                     hasWarn = true;
             };
 
-            char *argv[] = {"testCommand", "unknown"};
+            char *argv[] = {(char*)"testCommand", (char*)"unknown"};
             this->parse(2, argv);
 
             results.push_back(hasWarn ? TestResult{true, ""} : TestResult{false, "未正确报告未知子命令的警告"});
@@ -491,7 +491,7 @@ class DefaultValueTest : public Command, public Test
             }
         });
 
-        char *argv[] = {"testCommand"};
+        char *argv[] = {(char*)"testCommand"};
         this->parse(1, argv);
 
         return mergeAll(results);
@@ -552,7 +552,7 @@ class MultiValueOptionTest : public Command, public Test
             results.push_back(TestResult{true, ""});
         });
 
-        char *argv[] = {"testCommand", "-f", "file1.txt", "file2.txt", "file3.txt", "-o", "otherValue"};
+        char *argv[] = {(char*)"testCommand", (char*)"-f", (char*)"file1.txt", (char*)"file2.txt", (char*)"file3.txt", (char*)"-o", (char*)"otherValue"};
         this->parse(7, argv);
 
         return mergeAll(results);
@@ -584,7 +584,7 @@ class ErrorHandlingTest : public Command, public Test
                     hasError = true;
             };
 
-            char *argv[] = {"testCommand", "-r"};
+            char *argv[] = {(char*)"testCommand", (char*)"-r"};
             this->parse(2, argv);
 
             results.push_back(hasError ? TestResult{true, ""} : TestResult{false, "未正确报告缺少必需值的错误"});
@@ -599,7 +599,7 @@ class ErrorHandlingTest : public Command, public Test
                     hasWarn = true;
             };
 
-            char *argv[] = {"testCommand", "--unknown-option"};
+            char *argv[] = {(char*)"testCommand", (char*)"--unknown-option"};
             this->parse(2, argv);
 
             results.push_back(hasWarn ? TestResult{true, ""} : TestResult{false, "未正确报告未知选项的警告"});
@@ -647,7 +647,7 @@ class ComplexOptionTest : public Command, public Test
             }
         });
 
-        char *argv[] = {"testCommand", "-abc", "--debug", "--verbose"};
+        char *argv[] = {(char*)"testCommand", (char*)"-abc", (char*)"--debug", (char*)"--verbose"};
         this->parse(4, argv);
 
         TestResult result({true, ""});
@@ -695,18 +695,18 @@ class IntegratedTest : public Command, public Test
             this->action([](Vector<Variant> args, Map<String, Variant> opts) {});
         };
 
-        char *argv[] = {"testCommand"};
-        char *argv1[] = {"testCommand", "-V"};
-        char *argv2[] = {"testCommand", "--version"};
-        char *argv3[] = {"testCommand", "-h"};
-        char *argv4[] = {"testCommand", "--help"};
-        char *argv5[] = {"testCommand", "-d", "task1", "task2", "task3"};
-        char *argv6[] = {"testCommand", "--done", "task1", "task2", "task3"};
-        char *argv7[] = {"testCommand", "-dp", "task1", "task2", "task3"};
-        char *argv8[] = {"testCommand", "-dp=1", "task1", "task2", "task3"};
-        char *argv9[] = {"testCommand", "add", "task1", "task2", "task3"};
-        char *argv10[] = {"testCommand", "rm", "1", "2", "3", "-l"};
-        char *argv11[] = {"testCommand", "rm", "1", "2", "3", "--level"};
+        char *argv[] = {(char*)"testCommand"};
+        char *argv1[] = {(char*)"testCommand", (char*)"-V"};
+        char *argv2[] = {(char*)"testCommand", (char*)"--version"};
+        char *argv3[] = {(char*)"testCommand", (char*)"-h"};
+        char *argv4[] = {(char*)"testCommand", (char*)"--help"};
+        char *argv5[] = {(char*)"testCommand", (char*)"-d", (char*)"task1", (char*)"task2", (char*)"task3"};
+        char *argv6[] = {(char*)"testCommand", (char*)"--done", (char*)"task1", (char*)"task2", (char*)"task3"};
+        char *argv7[] = {(char*)"testCommand", (char*)"-dp", (char*)"task1", (char*)"task2", (char*)"task3"};
+        char *argv8[] = {(char*)"testCommand", (char*)"-dp=1", (char*)"task1", (char*)"task2", (char*)"task3"};
+        char *argv9[] = {(char*)"testCommand", (char*)"add", (char*)"task1", (char*)"task2", (char*)"task3"};
+        char *argv10[] = {(char*)"testCommand", (char*)"rm", (char*)"1", (char*)"2", (char*)"3", (char*)"-l"};
+        char *argv11[] = {(char*)"testCommand", (char*)"rm", (char*)"1", (char*)"2", (char*)"3", (char*)"--level"};
 
         do
         {
