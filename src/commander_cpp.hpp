@@ -31,6 +31,7 @@ SOFTWARE.
 #include <sstream>
 #include <variant>
 #include <vector>
+#include <algorithm>
 
 namespace COMMANDER_CPP
 {
@@ -217,8 +218,12 @@ class Command
     };
     virtual String helpText()
     {
-        auto getHelpText = [this]() {
-            auto getUsageText = [this](Command *cmd) {
+        auto getHelpText = [this]()
+        {
+            std::vector<std::vector<String>> lines;
+
+            auto getUsageText = [&](Command *cmd)
+            {
                 std::stringstream out;
                 out << cmd->commandName;
                 if (cmd->options.size())
@@ -228,50 +233,58 @@ class Command
                 {
                     argumentText +=
                         " " + (arg->valueIsRequired ? "<" + arg->name + (arg->isMultiValue ? "..." : "") + ">"
-                                                 : "[" + arg->name + (arg->isMultiValue ? "..." : "") + "]");
+                                                    : "[" + arg->name + (arg->isMultiValue ? "..." : "") + "]");
                 }
-                if (cmd->arguments.size())
+                if (!cmd->arguments.empty())
                     out << argumentText;
+
+                String usageText = "Usage: " + out.str();
+
+                Command *p = parentCommand;
+                while (p)
+                {
+                    usageText = p->commandName + " " + usageText;
+                    p = p->parentCommand;
+                }
 
                 return out.str();
             };
 
-            String usageText = getUsageText(this);
-            Command *p = parentCommand;
-            while (p)
+            auto collectDescription = [&]()
             {
-                usageText = p->commandName + " " + usageText;
-                p = p->parentCommand;
-            }
+                lines.push_back({{description()}});
+            };
 
-            std::stringstream out;
-            out << "Usage: " << usageText << std::endl;
-
-            String descText = description();
-            if (!descText.empty())
+            auto collectArguments = [&]()
             {
-                out << std::endl << description() << std::endl;
-            }
-
-            if (!arguments.empty())
-            {
-                out << std::endl << "Arguments:" << std::endl;
-                for (const auto arg : arguments)
+                if (!arguments.empty())
                 {
-                    out << "  " << arg->name << (arg->isMultiValue ? "..." : "") << "  " << arg->desc << std::endl;
-                }
-            }
+                    lines.push_back({{"Arguments:"}});
 
-            do
+                    for (const auto arg : arguments)
+                    {
+                        lines.push_back({{"  " + arg->name + (arg->isMultiValue ? "..." : "")}, {arg->desc}});
+                    }
+                }
+            };
+
+            auto collectOptions = [&]()
             {
-                out << std::endl << "Options:" << std::endl;
-                auto getOptionText = [&out](Option *opt) {
+                auto getOptionText = [](Option *opt)
+                {
+                    std::stringstream out;
                     out << "  " << (opt->alias.empty() ? "" : ("-" + opt->alias + ", ")) << ("--" + opt->name);
                     if (!opt->valueName.empty())
                         out << " "
                             << (opt->valueIsRequired ? "<" + opt->valueName + (opt->multiValue ? "..." : "") + ">"
-                                                : "[" + opt->valueName + (opt->multiValue ? "..." : "") + "]");
-                    out << "  " << opt->desc;
+                                                     : "[" + opt->valueName + (opt->multiValue ? "..." : "") + "]");
+                    return out.str();
+                };
+
+                auto getDescriptionText = [](Option *opt)
+                {
+                    std::stringstream out;
+                    out << opt->desc;
                     if (!opt->valueName.empty())
                     {
                         String defaultValue;
@@ -309,27 +322,82 @@ class Command
                             out << " (default: " << defaultValue << ")";
                     }
 
-                    out << std::endl;
+                    return out.str();
                 };
 
-                getOptionText(versionOption);
+                lines.push_back({{"Options:"}});
+                lines.push_back({{getOptionText(versionOption)}, {getDescriptionText(versionOption)}});
                 for (const auto opt : options)
                 {
-                    getOptionText(opt);
+                    lines.push_back({{getOptionText(opt)}, {getDescriptionText(versionOption)}});
                 }
-                getOptionText(helpOption);
-            } while (false);
+                lines.push_back({{getOptionText(helpOption)}, {getDescriptionText(helpOption)}});
+            };
 
-            if (!subCommands.empty())
+            auto collectCommands = [&]()
             {
-                out << std::endl << "Commands:" << std::endl;
-                for (const auto cmd : subCommands)
+                if (!subCommands.empty())
                 {
-                    out << "  " << getUsageText(cmd) << "  " << cmd->description() << std::endl;
+                    lines.push_back({{"Commands:"}});
+                    for (const auto cmd : subCommands)
+                    {
+                        lines.push_back({{getUsageText(cmd)}, {cmd->description()}});
+                    }
                 }
-            }
+            };
 
-            return out.str();
+            auto mergeLines = [&]()
+            {
+                std::vector<int> columnMaxLens;
+                std::stringstream out;
+                for(auto columns : lines)
+                {
+                    for(int i = 0; i < columns.size(); ++i)
+                    {
+                        int s = 0;
+                        try
+                        {
+                            s =  columnMaxLens.at(i);
+                        }
+                        catch(const std::exception& e)
+                        {
+                            columnMaxLens.emplace_back(s);
+                        }
+                        
+                        String column = columns.at(i);
+                        s = std::max<int>(s, column.size());
+
+                        columnMaxLens[i] = s;
+                    }
+                }
+
+                for(auto columns : lines)
+                {
+                    for (int i = 0; i < columns.size(); ++i)
+                    {
+                        int s = columnMaxLens.at(i);
+                        String c = columns.at(i);
+                        out << c;
+                        int l = s - c.size();
+                        if(l >= 0)
+                        {
+                            String space;
+                            space.resize(l+2,' ');
+                            out << space;
+                        }
+                    }
+                    out << std::endl;
+                }
+                return out.str();
+            };
+
+            lines.push_back({{getUsageText(this)}});
+            collectDescription();
+            collectArguments();
+            collectOptions();
+            collectCommands();
+
+            return mergeLines();
         };
         return !helpOption->desc.empty() ? helpOption->desc : getHelpText();
     }
