@@ -204,7 +204,7 @@ int main(int argc, char **argv)
     mod [options] <index> [todo]    修改一个待办事项。
     list [options] [range]          显示待办事项列表。
     mv <index> <distIndex>          移动待办事项。
-    conf  配置。
+    conf                            配置。
 
     */
     auto logger = new TodoLogger();
