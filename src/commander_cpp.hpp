@@ -330,7 +330,7 @@ class Command
                 lines.push_back({{getOptionText(versionOption)}, {getDescriptionText(versionOption)}});
                 for (const auto opt : options)
                 {
-                    lines.push_back({{getOptionText(opt)}, {getDescriptionText(versionOption)}});
+                    lines.push_back({{getOptionText(opt)}, {getDescriptionText(opt)}});
                 }
                 lines.push_back({{getOptionText(helpOption)}, {getDescriptionText(helpOption)}});
                 lines.push_back({});
