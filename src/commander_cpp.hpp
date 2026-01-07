@@ -24,6 +24,7 @@ SOFTWARE.
 #ifndef COMMANDER_CPP_HPP
 #define COMMANDER_CPP_HPP
 
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -31,7 +32,6 @@ SOFTWARE.
 #include <sstream>
 #include <variant>
 #include <vector>
-#include <algorithm>
 
 namespace COMMANDER_CPP
 {
@@ -40,7 +40,7 @@ using VariantBase = std::variant<std::monostate, int, double, String, bool>;
 using Variant = std::variant<std::monostate, int, double, String, bool, std::vector<VariantBase>>;
 template <typename K, typename V> using Map = std::map<K, V>;
 template <typename T> using Vector = std::vector<T>;
-using Action = std::function<void(class Command* cmd, Vector<Variant> args, Map<String, Variant> opts)>;
+using Action = std::function<void(class Command *cmd, Vector<Variant> args, Map<String, Variant> opts)>;
 using Action2 = std::function<void(Vector<Variant> args, Map<String, Variant> opts)>;
 
 class FinialRelease
@@ -62,7 +62,9 @@ class FinialRelease
 class Logger
 {
   public:
-    virtual ~Logger(){}
+    virtual ~Logger()
+    {
+    }
     virtual Logger *debug(const String &msg)
     {
         return this;
@@ -218,12 +220,10 @@ class Command
     };
     virtual String helpText()
     {
-        auto getHelpText = [this]()
-        {
+        auto getHelpText = [this]() {
             std::vector<std::vector<String>> lines;
 
-            auto getUsageText = [&](Command *cmd)
-            {
+            auto getUsageText = [&](Command *cmd) {
                 std::stringstream out;
                 out << cmd->commandName;
                 if (cmd->options.size())
@@ -238,7 +238,11 @@ class Command
                 if (!cmd->arguments.empty())
                     out << argumentText;
 
-                String usageText = "Usage: " + out.str();
+                return out.str();
+            };
+
+            auto collectUsage = [&]() {
+                String usageText = getUsageText(this);
 
                 Command *p = parentCommand;
                 while (p)
@@ -247,31 +251,29 @@ class Command
                     p = p->parentCommand;
                 }
 
-                return out.str();
+                lines.push_back({{"Usage: " + usageText}});
+                lines.push_back({});
             };
 
-            auto collectDescription = [&]()
-            {
+            auto collectDescription = [&]() {
                 lines.push_back({{description()}});
+                lines.push_back({});
             };
 
-            auto collectArguments = [&]()
-            {
+            auto collectArguments = [&]() {
                 if (!arguments.empty())
                 {
-                    lines.push_back({{"Arguments:"}});
-
+                    lines.push_back({{"Arguments: "}});
                     for (const auto arg : arguments)
                     {
                         lines.push_back({{"  " + arg->name + (arg->isMultiValue ? "..." : "")}, {arg->desc}});
                     }
+                    lines.push_back({});
                 }
             };
 
-            auto collectOptions = [&]()
-            {
-                auto getOptionText = [](Option *opt)
-                {
+            auto collectOptions = [&]() {
+                auto getOptionText = [](Option *opt) {
                     std::stringstream out;
                     out << "  " << (opt->alias.empty() ? "" : ("-" + opt->alias + ", ")) << ("--" + opt->name);
                     if (!opt->valueName.empty())
@@ -281,8 +283,7 @@ class Command
                     return out.str();
                 };
 
-                auto getDescriptionText = [](Option *opt)
-                {
+                auto getDescriptionText = [](Option *opt) {
                     std::stringstream out;
                     out << opt->desc;
                     if (!opt->valueName.empty())
@@ -325,45 +326,50 @@ class Command
                     return out.str();
                 };
 
-                lines.push_back({{"Options:"}});
+                lines.push_back({{"Options: "}});
                 lines.push_back({{getOptionText(versionOption)}, {getDescriptionText(versionOption)}});
                 for (const auto opt : options)
                 {
                     lines.push_back({{getOptionText(opt)}, {getDescriptionText(versionOption)}});
                 }
                 lines.push_back({{getOptionText(helpOption)}, {getDescriptionText(helpOption)}});
+                lines.push_back({});
             };
 
-            auto collectCommands = [&]()
-            {
+            auto collectCommands = [&]() {
                 if (!subCommands.empty())
                 {
-                    lines.push_back({{"Commands:"}});
+                    lines.push_back({{"Commands: "}});
                     for (const auto cmd : subCommands)
                     {
-                        lines.push_back({{getUsageText(cmd)}, {cmd->description()}});
+                        lines.push_back({{"  " + getUsageText(cmd)}, {cmd->description()}});
                     }
+                    lines.push_back({});
                 }
             };
 
-            auto mergeLines = [&]()
-            {
+            auto mergeLines = [&]() {
                 std::vector<int> columnMaxLens;
                 std::stringstream out;
-                for(auto columns : lines)
+
+                // 先遍历每一行，每一列的最长长度
+                for (auto columns : lines)
                 {
-                    for(int i = 0; i < columns.size(); ++i)
+                    if (columns.size() <= 1)
+                        continue;
+
+                    for (int i = 0; i < columns.size(); ++i)
                     {
                         int s = 0;
                         try
                         {
-                            s =  columnMaxLens.at(i);
+                            s = columnMaxLens.at(i);
                         }
-                        catch(const std::exception& e)
+                        catch (const std::exception &e)
                         {
                             columnMaxLens.emplace_back(s);
                         }
-                        
+
                         String column = columns.at(i);
                         s = std::max<int>(s, column.size());
 
@@ -371,18 +377,27 @@ class Command
                     }
                 }
 
-                for(auto columns : lines)
+                // 将每一列短的补空格补齐，然后重新组织文本
+                for (auto columns : lines)
                 {
+                    if (columns.size() == 1)
+                    {
+                        String c = columns.at(0);
+                        out << c << std::endl;
+                        continue;
+                    }
+
                     for (int i = 0; i < columns.size(); ++i)
                     {
                         int s = columnMaxLens.at(i);
                         String c = columns.at(i);
                         out << c;
                         int l = s - c.size();
-                        if(l >= 0)
+                        if (l >= 0)
                         {
                             String space;
-                            space.resize(l+2,' ');
+                            // 这里+2是让每一列不要紧挨着，中间留两个空格的宽度
+                            space.resize(l + 2, ' ');
                             out << space;
                         }
                     }
@@ -391,7 +406,7 @@ class Command
                 return out.str();
             };
 
-            lines.push_back({{getUsageText(this)}});
+            collectUsage();
             collectDescription();
             collectArguments();
             collectOptions();
@@ -436,7 +451,7 @@ class Command
         {
             if (pLogger)
                 pLogger->warn(String("add command failed, command ") + command->commandName +
-                               String(" already exists"));
+                              String(" already exists"));
             return this;
         }
 
@@ -459,7 +474,7 @@ class Command
         Argument *arg = Argument::create(name, pLogger);
         if (!arg)
         {
-            if(pLogger)
+            if (pLogger)
                 pLogger->error(String("argument ") + name + String(" create failed"));
             return this;
         }
@@ -514,7 +529,7 @@ class Command
                 pLogger->debug(String("[error]:") + String("action callback is null"));
         }
 
-        actionCallback = [cb](class Command* cmd, Vector<Variant> args, Map<String, Variant> opts){
+        actionCallback = [cb](class Command *cmd, Vector<Variant> args, Map<String, Variant> opts) {
             (void)cmd;
             cb(args, opts);
         };
@@ -870,7 +885,7 @@ class Command
     /**
      * 获取日志操作对象指针
      */
-    Logger* logger()
+    Logger *logger()
     {
         return pLogger;
     }
@@ -939,7 +954,7 @@ class Command
             if (!std::regex_search(name, res, reg))
             {
                 if (logger)
-                    logger->warn(String("invalid argument name: ") + name); 
+                    logger->warn(String("invalid argument name: ") + name);
                 return nullptr;
             }
             String argName = !res.str(1).empty() ? res.str(1) : !res.str(3).empty() ? res.str(3) : "";
