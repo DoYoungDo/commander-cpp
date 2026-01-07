@@ -42,6 +42,7 @@ template <typename K, typename V> using Map = std::map<K, V>;
 template <typename T> using Vector = std::vector<T>;
 using Action = std::function<void(class Command *cmd, Vector<Variant> args, Map<String, Variant> opts)>;
 using Action2 = std::function<void(Vector<Variant> args, Map<String, Variant> opts)>;
+using Action3 = std::function<void(class Command *cmd, Vector<Variant> args, class Options opts)>;
 
 class FinialRelease
 {
@@ -88,6 +89,28 @@ class LoggerDefaultImpl : public Logger
         std::cout << msg << std::endl;
         return this;
     };
+};
+
+class Options
+{
+  public:
+    Map<String, Variant> opts;
+
+    inline bool hasOption(const String &name)
+    {
+        return opts.find(name) != opts.end();
+    }
+
+    template <typename T> inline T getValue(const String &name, T defaultValue)
+    {
+        auto it = opts.find(name);
+        if (opts.find(name) == opts.end())
+        {
+            return defaultValue;
+        }
+        T *v = std::get_if<T>(&it->second);
+        return v ? *v : defaultValue;
+    }
 };
 
 class Command
@@ -532,6 +555,19 @@ class Command
         actionCallback = [cb](class Command *cmd, Vector<Variant> args, Map<String, Variant> opts) {
             (void)cmd;
             cb(args, opts);
+        };
+        return this;
+    }
+    virtual Command *action(const Action3 &cb)
+    {
+        if (!cb)
+        {
+            if (pLogger)
+                pLogger->debug(String("[error]:") + String("action callback is null"));
+        }
+
+        actionCallback = [cb](class Command *cmd, Vector<Variant> args, Map<String, Variant> opts) {
+            cb(cmd, args, {opts});
         };
         return this;
     }
