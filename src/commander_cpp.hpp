@@ -590,6 +590,7 @@ class Command
         std::regex intValueReg(R"(^-?\d+$)");
         std::regex doubleValueReg(R"(^-?\d+\.\d+$)");
         std::regex boolValueReg(R"(^(?:(true)|false)$)");
+        std::regex strValueReg(R"(^(?:"([^"]+)\"|'([^']+)')$)");
 
         enum LogType{D,W,E,P};
         auto log = [this](LogType type, const String &msg) {
@@ -648,6 +649,12 @@ class Command
                 return VariantBase(res.str(1).empty());
             }
 
+            // 如果有引号，去掉引号
+            if (std::regex_search(text, res, strValueReg))
+            {
+                return VariantBase(!res.str(1).empty() ? res.str(1) : (!res.str(2).empty() ? res.str(2) : text));
+            }
+
             return VariantBase(text);
         };
         auto getValue = [=](const String &text) {
@@ -671,6 +678,12 @@ class Command
                 return Variant(res.str(1).empty());
             }
 
+            // 如果有引号，去掉引号
+            if (std::regex_search(text, res, strValueReg))
+            {
+                return Variant(!res.str(1).empty() ? res.str(1) : (!res.str(2).empty() ? res.str(2) : text));
+            }
+
             return Variant(text);
         };
 
@@ -688,7 +701,7 @@ class Command
             return true;
         };
         auto parseOptionName = [&](const String &name, const String &value = String()) {
-            log(D, String("try parse option name: ") + name + String(" value: ") + value);
+            log(D, String("try parse option name: ") + name + String(", value: ") + value);
             Option *opt = findOption(name);
             if (!opt)
             {
@@ -722,6 +735,7 @@ class Command
                                 while (++cur < argc)
                                 {
                                     String arg = argv[cur];
+                                    log(D, "try get value from identifier: " + arg);
                                     std::smatch res;
                                     if (std::regex_search(arg, res, optionAliasReg) ||
                                         std::regex_search(arg, res, optionReg))
@@ -749,6 +763,7 @@ class Command
                         else
                         {
                             String valueText = !value.empty() ? value : ++cur < argc ? argv[cur] : "";
+                            log(D, "try get value from identifier: " + valueText);
                             std::smatch res;
                             if (valueText.empty() || std::regex_search(valueText, res, optionAliasReg) ||
                                 std::regex_search(valueText, res, optionReg))
