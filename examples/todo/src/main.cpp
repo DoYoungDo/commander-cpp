@@ -16,11 +16,11 @@ class TodoLogger : public Logger
     TodoLogger()
     {
     }
-    // virtual Logger *debug(const String &msg)
-    // {
-    //     std::cout << "DEBUG: " << msg << std::endl;
-    //     return this;
-    // }
+    virtual Logger *debug(const String &msg)
+    {
+        std::cout << "DEBUG: " << msg << std::endl;
+        return this;
+    }
     virtual Logger *warn(const String &msg)
     {
         std::cout << "WARN: " << msg << std::endl;
@@ -152,13 +152,13 @@ void doActionList(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 void doActionMv(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 {
 }
-void doActionConfInit(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
+void doActionConfInit(Command *cmd, Vector<Variant> args, Options opts)
 {
     Logger* logger = cmd->logger();
     Configer cfg;
-    if (cfg.checkLocal())
+    if (cfg.checkLocal() && !opts.hasOption("cover"))
     {
-        logger->warn("已经初始化过，是否重新初始化？(y/n)");
+        logger->print("已经初始化过，是否重新初始化？(y/n)");
         String text;
         std::cin >> text;
         if (text != "y")
@@ -167,14 +167,37 @@ void doActionConfInit(Command *cmd, Vector<Variant> args, Map<String, Variant> o
         }
     }
 
-    logger->print("请输入存储目录");
     String repository;
-    std::cin >> repository;
+    if (opts.hasOption("repository"))
+    {
+        repository = opts.getValue<String>("repository", "");
+        if(repository.empty())
+        {
+            logger->error("存储仓库路径不能为空。");
+            return;
+        }
+    }
+    else
+    {
+        logger->print("请输入存储路径");
+        std::cin >> repository;
+    }
 
-    logger->print("请输入表名");
     String table;
-    std::cin >> table;
-
+    if (opts.hasOption("table"))
+    {
+        table = opts.getValue<String>("table", "");
+        if (table.empty())
+        {
+            logger->warn("无效的表名，使用默认表名：default。");
+            table = "default";
+        }
+    }
+    else
+    {
+        logger->print("请输入表名");
+        std::cin >> table;
+    }
     String errMsg;
     if (!cfg.initLocal(table, repository, errMsg))
     {
@@ -188,6 +211,10 @@ void doActionConfInit(Command *cmd, Vector<Variant> args, Map<String, Variant> o
 
 int main(int argc, char **argv)
 {
+    for(int i = 0 ;i < argc;++i)
+    {
+        std::cout << argv[i] << std::endl;
+    }
     /*
 
     Usage: todo
@@ -246,6 +273,9 @@ int main(int argc, char **argv)
                          ->description("配置。")
                          ->addCommand((new Command("init", logger))
                                          ->description("初始化todo仓库。")
+                                         ->option("-c --cover", "如果已经初始化，不再询问，直接覆盖。")
+                                         ->option("-r --repository <dir>", "直接指定存储仓库位置，不再询问。")
+                                         ->option("-t --table <name>", "直接指定表名，不再询问。")
                                          ->action(doActionConfInit))
                          ->action([](Command *cmd, Vector<Variant> args, Map<String, Variant> opts) {
                              static_cast<TodoLogger *>(cmd->logger())->printHelp(cmd);
