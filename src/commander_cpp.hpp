@@ -44,6 +44,42 @@ using Action = std::function<void(class Command *cmd, Vector<Variant> args, Map<
 using Action2 = std::function<void(Vector<Variant> args, Map<String, Variant> opts)>;
 using Action3 = std::function<void(class Command *cmd, Vector<Variant> args, class Options opts)>;
 
+namespace TOOLS
+{
+/*
+ * @brief 拆分字符串
+ */
+Vector<String> split(const String &str, const String &delimiter)
+{
+   Vector<String> lines;
+   int pos = 0;
+   while (true)
+   {
+       int findPos = pos;
+       findPos = str.find(delimiter, findPos);
+       if (findPos == -1)
+       {
+           String lastSubStr = str.substr(pos, str.size() - pos);
+           if (!lastSubStr.empty())
+               lines.push_back(lastSubStr);
+           break;
+       }
+
+       String subStr = str.substr(pos, findPos - pos);
+       lines.push_back(subStr);
+
+       pos = findPos + delimiter.size();
+   }
+
+   if (lines.empty())
+   {
+       lines.push_back(str);
+   }
+
+   return std::move(lines);
+}
+} // namespace TOOLS
+
 class FinialRelease
 {
   public:
@@ -289,7 +325,14 @@ class Command
                     lines.push_back({{"Arguments: "}});
                     for (const auto arg : arguments)
                     {
-                        lines.push_back({{"  " + arg->name + (arg->isMultiValue ? "..." : "")}, {arg->desc}});
+                        Vector<String> descList = TOOLS::split(arg->desc, "\n");
+                        String firstLine = descList.front();
+
+                        lines.push_back({{"  " + arg->name + (arg->isMultiValue ? "..." : "")}, {firstLine}});
+                        for (auto it = descList.begin() + 1; it < descList.end(); ++it)
+                        {
+                            lines.push_back({{}, {*it}});
+                        }
                     }
                     lines.push_back({});
                 }
@@ -350,12 +393,21 @@ class Command
                 };
 
                 lines.push_back({{"Options: "}});
-                lines.push_back({{getOptionText(versionOption)}, {getDescriptionText(versionOption)}});
-                for (const auto opt : options)
+
+                auto opts = options;
+                opts.insert(opts.begin(), versionOption);
+                opts.push_back(helpOption);
+                for (const auto opt : opts)
                 {
-                    lines.push_back({{getOptionText(opt)}, {getDescriptionText(opt)}});
+                    auto descList = TOOLS::split(getDescriptionText(opt), "\n");
+                    auto first = descList.front();
+                    lines.push_back({{getOptionText(opt)}, {first}});
+
+                    for (auto it = descList.begin() + 1; it < descList.end(); ++it)
+                    {
+                        lines.push_back({{}, {*it}});
+                    }
                 }
-                lines.push_back({{getOptionText(helpOption)}, {getDescriptionText(helpOption)}});
                 lines.push_back({});
             };
 
@@ -365,7 +417,14 @@ class Command
                     lines.push_back({{"Commands: "}});
                     for (const auto cmd : subCommands)
                     {
-                        lines.push_back({{"  " + getUsageText(cmd)}, {cmd->description()}});
+                        auto descList = TOOLS::split(cmd->description(), "\n");
+                        auto first = descList.front();
+                        lines.push_back({{"  " + getUsageText(cmd)}, {first}});
+
+                        for (auto it = descList.begin() + 1; it < descList.end(); ++it)
+                        {
+                            lines.push_back({{}, {*it}});
+                        }
                     }
                     lines.push_back({});
                 }
