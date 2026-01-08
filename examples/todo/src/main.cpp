@@ -36,6 +36,8 @@ class TableConnect
 {
   public:
     virtual ~TableConnect();
+    virtual bool checkConnect() = 0;
+    virtual bool initConnect() = 0;
     virtual bool connectToTable(const String &tableName) = 0;
     virtual bool getTable(Table &table) = 0;
     virtual bool addTodo(const Todo &doto) = 0;
