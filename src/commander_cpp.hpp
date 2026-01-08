@@ -1100,7 +1100,6 @@ class Command
     Vector<Argument *> arguments;
     Vector<Command *> subCommands;
 
-  protected:
     Logger *pLogger;
 };
 } // namespace COMMANDER_CPP

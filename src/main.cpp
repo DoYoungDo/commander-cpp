@@ -106,7 +106,7 @@ class VersionTest : public Command, public Test
         char *argv1[] = {(char*)"testCommand", (char*)"--V"};
         this->parse(2, argv1);
 
-        return static_cast<LoggerImpl *>(this->pLogger)->result;
+        return static_cast<LoggerImpl *>(this->logger())->result;
     }
 };
 
@@ -145,7 +145,7 @@ class DescriptionTest : public Command, public Test
         char *argv2[] = {(char*)"testCommand", (char*)"--help"};
         this->parse(2, argv2);
 
-        return static_cast<LoggerImpl *>(this->pLogger)->result;
+        return static_cast<LoggerImpl *>(this->logger())->result;
     }
 };
 
@@ -166,7 +166,7 @@ class OptionTest : public Command, public Test
     virtual TestResult test() override
     {
         std::vector<TestResult> results;
-        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        TestLogger *logger = static_cast<TestLogger *>(this->logger());
 
         do
         {
@@ -265,7 +265,7 @@ class ArgumentTest : public Command, public Test
     virtual TestResult test() override
     {
         std::vector<TestResult> results;
-        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        TestLogger *logger = static_cast<TestLogger *>(this->logger());
 
         do
         {
@@ -368,7 +368,7 @@ class SubCommandTest : public Command, public Test
     virtual TestResult test() override
     {
         std::vector<TestResult> results;
-        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        TestLogger *logger = static_cast<TestLogger *>(this->logger());
 
         // 测试子命令解析 - add 命令
         do
@@ -447,7 +447,7 @@ class DefaultValueTest : public Command, public Test
     virtual TestResult test() override
     {
         std::vector<TestResult> results;
-        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        TestLogger *logger = static_cast<TestLogger *>(this->logger());
 
         this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
             // 测试默认值
@@ -514,7 +514,7 @@ class MultiValueOptionTest : public Command, public Test
     virtual TestResult test() override
     {
         std::vector<TestResult> results;
-        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        TestLogger *logger = static_cast<TestLogger *>(this->logger());
         // logger->stdOut = true;
 
         this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
@@ -573,7 +573,7 @@ class ErrorHandlingTest : public Command, public Test
     virtual TestResult test() override
     {
         std::vector<TestResult> results;
-        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        TestLogger *logger = static_cast<TestLogger *>(this->logger());
 
         // 测试缺少必需选项的错误
         do
@@ -626,7 +626,7 @@ class ComplexOptionTest : public Command, public Test
     virtual TestResult test() override
     {
         std::vector<TestResult> results;
-        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        TestLogger *logger = static_cast<TestLogger *>(this->logger());
 
         this->action([&](Vector<Variant> args, Map<String, Variant> opts) {
             // 测试布尔选项
@@ -684,7 +684,7 @@ class IntegratedTest : public Command, public Test
     virtual TestResult test() override
     {
         std::vector<TestResult> results;
-        TestLogger *logger = static_cast<TestLogger *>(this->pLogger);
+        TestLogger *logger = static_cast<TestLogger *>(this->logger());
 
         auto resetChecks = [&]() {
             logger->stdOut = false;
