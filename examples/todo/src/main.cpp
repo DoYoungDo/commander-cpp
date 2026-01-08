@@ -10,6 +10,41 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 using String = std::string;
 
+struct Todo
+{
+    String id;
+    String todo;
+    String begin;
+    String end;
+    String desc;
+    bool done;
+    int priority;
+
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(Todo, id, todo, begin, end, done, priority);
+};
+
+struct Table
+{
+    String name;
+    String date;
+    Vector<Todo> list;
+
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(Table, name, date, list);
+};
+
+class TableConnect
+{
+  public:
+    virtual ~TableConnect();
+    virtual bool connectToTable(const String &tableName) = 0;
+    virtual bool getTable(Table &table) = 0;
+    virtual bool addTodo(const Todo &doto) = 0;
+    virtual bool addTodoList(const Vector<Todo> &doto) = 0;
+    virtual Vector<Todo> findTodoList(const String &name) = 0;
+    virtual bool rmTodoById(const String &id) = 0;
+    virtual bool rmTodoListById(const Vector<String> &idList) = 0;
+};
+
 class Configer
 {
   public:
@@ -70,8 +105,15 @@ class Configer
             errMsg = "创建存储目录失败，请检查权限。";
             return false;
         }
-
         setting.repository = repository;
+
+        String tableDir = getTableDir();
+        if (!fs::exists(tableDir) && !fs::create_directories(tableDir))
+        {
+            errMsg = "创建表存储目录失败，请检查权限。";
+            return false;
+        }
+
         setting.table = table;
 
         json data = setting;
@@ -98,6 +140,10 @@ class Configer
     inline String getLogPath()
     {
         return getAppDataDir() + "/.log";
+    }
+    inline String getTableDir()
+    {
+        return setting.repository + "/tables";
     }
 };
 
@@ -172,6 +218,23 @@ void doActionAdd(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
     {
         cmd->logger()->error("没有可用的待办事项。");
         return;
+    }
+
+    Table table;
+    try
+    {
+        String tableFile = cfg.getTableDir() + "/" + cfg.setting.table;
+        std::ifstream f(tableFile);
+        if(fs::exists(tableFile))
+        {
+            json data = json::parse(f);
+            data.get_to(table);
+        }
+    }
+    catch (const std::exception &e)
+    {
+        cmd->logger()->warn("读取失败。");
+        // return;
     }
 
     cmd->logger()->debug("开始执行添加。");
@@ -278,6 +341,7 @@ int main(int argc, char **argv)
                          ->description("添加新的待办事项。")
                          ->argument("<todo...>", "待办事项内容。")
                          ->option("-d --done", "将待办事项标记为已完成。")
+                         ->option("-D --details <descriptions>", "为待办项添加描述。")
                          ->action(doActionAdd))
         ->addCommand((new Command("rm", logger))
                          ->description("删除待办事项。")
@@ -294,11 +358,14 @@ int main(int argc, char **argv)
                          ->description("显示待办事项列表。")
                          ->option("-d --done <done>", "只显示完成的或未完成的待办事项，参数为true或false。", true)
                          ->option("-c --count", "只显示待办事项数量。")
-                         ->argument(
-                             "[range]",
-                             "显示范围\n起始：[start | [start-，结束缺省:max\n结束：end]，起始缺省：0\n起始-结束：[start-end] | "
-                             "start-end\n例：\n查看起始位置为12的：[12 或 [12-\n查看起始位置为12结束位置为14的：12-14 或 "
-                             "[12-14]\n查看起始位置为0结束位置为14的：14],14] = [0-14] = 0-14")
+                         ->argument("[range]", "显示范围\n"
+                                                "起始：[start | [start-，结束缺省:max\n"
+                                                "结束：end]，起始缺省：0\n"
+                                                "起始-结束：[start-end] | start-end\n"
+                                                "例：\n"
+                                                "查看起始位置为12的：[12 或 [12-\n"
+                                                "查看起始位置为12结束位置为14的：12-14 或 [12-14]\n"
+                                                "查看起始位置为0结束位置为14的：14],14] = [0-14] = 0-14")
                          ->action(doActionList))
         ->addCommand((new Command("mv", logger))
                          ->description("移动待办事项。")
