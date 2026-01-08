@@ -758,10 +758,11 @@ class IntegratedTest : public Command, public Test
                 std::regex reg4(R"(^Options:)", std::regex_constants::multiline);
                 std::regex reg5(R"(^\s+\-V,\s\-\-version\s+out\sput\sversion\snumber.)", std::regex_constants::multiline);
                 std::regex reg6(R"(^\s+\-d,\s\-\-done)", std::regex_constants::multiline);
-                std::regex reg7(R"(^\s+\-h,\s\-\-help)", std::regex_constants::multiline);
-                std::regex reg8(R"(^Commands:)", std::regex_constants::multiline);
-                std::regex reg9(R"(^\s+add\s\[options\]\s\<todos\.\.\.\>)", std::regex_constants::multiline);
-                std::regex reg10(R"(^\s+rm\s\[options\]\s\<index\.\.\.\>)", std::regex_constants::multiline);
+                std::regex reg7(R"(^\s+\-p,\s\-\-priority)", std::regex_constants::multiline);
+                std::regex reg8(R"(^\s+\-h,\s\-\-help)", std::regex_constants::multiline);
+                std::regex reg9(R"(^Commands:)", std::regex_constants::multiline);
+                std::regex reg10(R"(^\s+add\s\[options\]\s\<todos\.\.\.\>)", std::regex_constants::multiline);
+                std::regex reg11(R"(^\s+rm\s\[options\]\s\<index\.\.\.\>)", std::regex_constants::multiline);
                 std::smatch res;
                 hasPrint = std::regex_search(msg, res, reg) && 
                            std::regex_search(msg, res, reg1) &&
@@ -773,7 +774,8 @@ class IntegratedTest : public Command, public Test
                            std::regex_search(msg, res, reg7) &&
                            std::regex_search(msg, res, reg8) && 
                            std::regex_search(msg, res, reg9) &&
-                           std::regex_search(msg, res, reg10);
+                           std::regex_search(msg, res, reg10) &&
+                           std::regex_search(msg, res, reg11);
             };
 
             this->parse(2, argv3);
