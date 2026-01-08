@@ -10,40 +10,6 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 using String = std::string;
 
-class TodoLogger : public Logger
-{
-  public:
-    TodoLogger()
-    {
-    }
-    virtual Logger *debug(const String &msg)
-    {
-        std::cout << "DEBUG: " << msg << std::endl;
-        return this;
-    }
-    virtual Logger *warn(const String &msg)
-    {
-        std::cout << "WARN: " << msg << std::endl;
-        return this;
-    }
-    virtual Logger *error(const String &msg)
-    {
-        std::cout << "ERROR: " << msg << std::endl;
-        return this;
-    }
-    virtual Logger *print(const String &msg)
-    {
-        std::cout << msg << std::endl;
-        return this;
-    }
-
-    void printHelp(Command *cmd)
-    {
-        char *argv[] = {(char *)"--help"};
-        cmd->parse(1, argv, 0);
-    }
-};
-
 class Configer
 {
   public:
@@ -116,7 +82,7 @@ class Configer
         return true;
     }
 
-  private:
+  public:
     inline String getAppDataLocalDir()
     {
         return "/Users/doyoung/Library/Application Support";
@@ -129,6 +95,68 @@ class Configer
     {
         return getAppDataDir() + "/setting.json";
     }
+    inline String getLogPath()
+    {
+        return getAppDataDir() + "/.log";
+    }
+};
+
+class TodoLogger : public Logger
+{
+  public:
+    TodoLogger()
+    {
+    }
+    ~TodoLogger()
+    {
+       Configer cfg;
+       if(cfg.checkLocal())
+       {
+           String logFilePath = cfg.getLogPath();
+           std::ofstream out(logFilePath, std::ios_base::app);
+           for(auto log : logs)
+           {
+               out << log << std::endl;
+           }
+           out << std::endl;
+       }
+    }
+    virtual Logger *debug(const String &msg)
+    {
+        // std::cout << "DEBUG: " << msg << std::endl;
+        recordLog("DEBUG: " + msg);
+        return this;
+    }
+    virtual Logger *warn(const String &msg)
+    {
+        std::cout << "WARN: " << msg << std::endl;
+        recordLog("WARN: " + msg);
+        return this;
+    }
+    virtual Logger *error(const String &msg)
+    {
+        std::cout << "ERROR: " << msg << std::endl;
+        recordLog("ERROR: " + msg);
+        return this;
+    }
+    virtual Logger *print(const String &msg)
+    {
+        std::cout << msg << std::endl;
+        return this;
+    }
+
+    void printHelp(Command *cmd)
+    {
+        char *argv[] = {(char *)"--help"};
+        cmd->parse(1, argv, 0);
+    }
+
+  private:
+    void recordLog(const String &msg)
+    {
+        logs.push_back(msg);
+    }
+    Vector<String> logs;
 };
 
 void doActionAdd(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
@@ -139,6 +167,14 @@ void doActionAdd(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
         cmd->logger()->error("当前目录未初始化为todo仓库，请先运行todo conf init命令进行初始化。");
         return;
     }
+
+    if(args.empty())
+    {
+        cmd->logger()->error("没有可用的待办事项。");
+        return;
+    }
+
+    cmd->logger()->debug("开始执行添加。");
 }
 void doActionRm(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 {
@@ -211,10 +247,10 @@ void doActionConfInit(Command *cmd, Vector<Variant> args, Options opts)
 
 int main(int argc, char **argv)
 {
-    for(int i = 0 ;i < argc;++i)
-    {
-        std::cout << argv[i] << std::endl;
-    }
+    // for(int i = 0 ;i < argc;++i)
+    // {
+    //     std::cout << argv[i] << std::endl;
+    // }
     /*
 
     Usage: todo
@@ -236,7 +272,7 @@ int main(int argc, char **argv)
     */
     auto logger = new TodoLogger();
     Command("todo", logger)
-        .version("0.0.1")
+        .version("0.0.1", "-V --version", "显示版本号。")
         ->description("待办。")
         ->addCommand((new Command("add", logger))
                          ->description("添加新的待办事项。")
@@ -284,5 +320,9 @@ int main(int argc, char **argv)
             static_cast<TodoLogger *>(cmd->logger())->printHelp(cmd);
         })
         ->parse(argc, argv);
+
+    delete logger;
+    logger = nullptr;
+    
     return 0;
 }
