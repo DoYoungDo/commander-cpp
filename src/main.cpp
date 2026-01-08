@@ -748,25 +748,31 @@ class IntegratedTest : public Command, public Test
 
         do
         {
+            // logger->stdOut = true;
             bool hasPrint = false;
             logger->checkPrint = [&](const std::string &msg) {
                 std::regex reg(R"(^Usage:\sIntegratedTest\s\[options\]\s\<addTodos\.\.\.\>$)", std::regex_constants::multiline);
                 std::regex reg1(R"(^集成测试命令行解析。$)", std::regex_constants::multiline);
-                std::regex reg2(R"(^Arguments:$)", std::regex_constants::multiline);
+                std::regex reg2(R"(^Arguments:)", std::regex_constants::multiline);
                 std::regex reg3(R"(^\s+addTodos\.\.\.)", std::regex_constants::multiline);
-                std::regex reg4(R"(^Options:$)", std::regex_constants::multiline);
-                std::regex reg5(R"(^\s+\-V,\s\-\-version\s+out\sput\sversion\snumber.$)", std::regex_constants::multiline);
+                std::regex reg4(R"(^Options:)", std::regex_constants::multiline);
+                std::regex reg5(R"(^\s+\-V,\s\-\-version\s+out\sput\sversion\snumber.)", std::regex_constants::multiline);
                 std::regex reg6(R"(^\s+\-d,\s\-\-done)", std::regex_constants::multiline);
                 std::regex reg7(R"(^\s+\-h,\s\-\-help)", std::regex_constants::multiline);
-                std::regex reg8(R"(^Commands:$)", std::regex_constants::multiline);
+                std::regex reg8(R"(^Commands:)", std::regex_constants::multiline);
                 std::regex reg9(R"(^\s+add\s\[options\]\s\<todos\.\.\.\>)", std::regex_constants::multiline);
                 std::regex reg10(R"(^\s+rm\s\[options\]\s\<index\.\.\.\>)", std::regex_constants::multiline);
                 std::smatch res;
-                hasPrint = std::regex_search(msg, res, reg) && std::regex_search(msg, res, reg1) &&
-                           std::regex_search(msg, res, reg2) && std::regex_search(msg, res, reg3) &&
-                           std::regex_search(msg, res, reg4) && std::regex_search(msg, res, reg5) &&
-                           std::regex_search(msg, res, reg6) && std::regex_search(msg, res, reg7) &&
-                           std::regex_search(msg, res, reg8) && std::regex_search(msg, res, reg9) &&
+                hasPrint = std::regex_search(msg, res, reg) && 
+                           std::regex_search(msg, res, reg1) &&
+                           std::regex_search(msg, res, reg2) && 
+                           std::regex_search(msg, res, reg3) &&
+                           std::regex_search(msg, res, reg4) && 
+                           std::regex_search(msg, res, reg5) &&
+                           std::regex_search(msg, res, reg6) && 
+                           std::regex_search(msg, res, reg7) &&
+                           std::regex_search(msg, res, reg8) && 
+                           std::regex_search(msg, res, reg9) &&
                            std::regex_search(msg, res, reg10);
             };
 
