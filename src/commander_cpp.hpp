@@ -581,6 +581,23 @@ class Command
             return this;
         }
 
+        for( const auto &existOpt : options)
+        {
+            if(!opt->alias.empty() && existOpt->alias == opt->alias)
+            {
+                if (pLogger)
+                    pLogger->warn(String("option alias ") + opt->alias + String(" already exists, Option: ") + opt->name + String("'s alias will forever be invalid."));
+            }
+
+            if (existOpt->name == opt->name)
+            {
+                if (pLogger)
+                    pLogger->warn(String("option ") + flag + String(" already exists, skip add"));
+                delete opt;
+                return this;
+            }
+        }
+
         opt->desc = desc;
         opt->defaultValue = defaultValue;
         options.push_back(opt);
