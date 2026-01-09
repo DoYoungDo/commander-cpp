@@ -52,17 +52,17 @@ class Configer
   public:
     struct Setting
     {
+        String connect;
         String table = "default";
-        String repository;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Configer::Setting, table, repository)
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Configer::Setting, connect, table);
     } setting;
     
     Configer()
     {
     }
 
-    bool checkLocal()
+    bool check()
     {
         String appDataDir = getAppDataDir();
         if (!fs::exists(appDataDir))
@@ -74,14 +74,14 @@ class Configer
         {
             return false;
         }
-        std::ifstream f(configPath);
-        json data = json::parse(f);
 
         try
         {
+            std::ifstream f(configPath);
+            json data = json::parse(f);
             data.get_to(setting);
 
-            if(setting.repository.empty())
+            if (setting.connect.empty())
             {
                 return false;
             }
@@ -95,33 +95,33 @@ class Configer
     }
     bool initLocal(const String& table, const String& repository, String& errMsg)
     {
-        String appDataDir = getAppDataDir();
-        if (!fs::exists(appDataDir) && !fs::create_directories(appDataDir))
-        {
-            errMsg = "创建缓存目录失败，请检查权限。";
-            return false;
-        }
+        // String appDataDir = getAppDataDir();
+        // if (!fs::exists(appDataDir) && !fs::create_directories(appDataDir))
+        // {
+        //     errMsg = "创建缓存目录失败，请检查权限。";
+        //     return false;
+        // }
 
-        if (!fs::exists(repository) && !fs::create_directories(repository))
-        {
-            errMsg = "创建存储目录失败，请检查权限。";
-            return false;
-        }
-        setting.repository = repository;
+        // if (!fs::exists(repository) && !fs::create_directories(repository))
+        // {
+        //     errMsg = "创建存储目录失败，请检查权限。";
+        //     return false;
+        // }
+        // setting.repository = repository;
 
-        String tableDir = getTableDir();
-        if (!fs::exists(tableDir) && !fs::create_directories(tableDir))
-        {
-            errMsg = "创建表存储目录失败，请检查权限。";
-            return false;
-        }
+        // String tableDir = getTableDir();
+        // if (!fs::exists(tableDir) && !fs::create_directories(tableDir))
+        // {
+        //     errMsg = "创建表存储目录失败，请检查权限。";
+        //     return false;
+        // }
 
-        setting.table = table;
+        // setting.table = table;
 
-        json data = setting;
-        String dataText = data.dump(4);
-        std::ofstream out(getConfigPath());
-        out << dataText;
+        // json data = setting;
+        // String dataText = data.dump(4);
+        // std::ofstream out(getConfigPath());
+        // out << dataText;
 
         return true;
     }
@@ -143,10 +143,10 @@ class Configer
     {
         return getAppDataDir() + "/.log";
     }
-    inline String getTableDir()
-    {
-        return setting.repository + "/tables";
-    }
+    // inline String getTableDir()
+    // {
+    //     return setting.repository + "/tables";
+    // }
 };
 
 class TodoLogger : public Logger
@@ -158,7 +158,7 @@ class TodoLogger : public Logger
     ~TodoLogger()
     {
        Configer cfg;
-       if(cfg.checkLocal())
+       if(cfg.check())
        {
            String logFilePath = cfg.getLogPath();
            std::ofstream out(logFilePath, std::ios_base::app);
@@ -210,36 +210,36 @@ class TodoLogger : public Logger
 void doActionAdd(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 {
     Configer cfg;
-    if (!cfg.checkLocal())
+    if (!cfg.check())
     {
-        cmd->logger()->error("当前目录未初始化为todo仓库，请先运行todo conf init命令进行初始化。");
+        cmd->logger()->error("未初始化仓库,请先运行todo conf init... 命令进行初始化，更多信息请运行 todo conf --help 查看。");
         return;
     }
 
-    if(args.empty())
-    {
-        cmd->logger()->error("没有可用的待办事项。");
-        return;
-    }
+    // if(args.empty())
+    // {
+    //     cmd->logger()->error("没有可用的待办事项。");
+    //     return;
+    // }
 
-    Table table;
-    try
-    {
-        String tableFile = cfg.getTableDir() + "/" + cfg.setting.table;
-        std::ifstream f(tableFile);
-        if(fs::exists(tableFile))
-        {
-            json data = json::parse(f);
-            data.get_to(table);
-        }
-    }
-    catch (const std::exception &e)
-    {
-        cmd->logger()->warn("读取失败。");
-        // return;
-    }
+    // Table table;
+    // try
+    // {
+    //     String tableFile = cfg.getTableDir() + "/" + cfg.setting.table;
+    //     std::ifstream f(tableFile);
+    //     if(fs::exists(tableFile))
+    //     {
+    //         json data = json::parse(f);
+    //         data.get_to(table);
+    //     }
+    // }
+    // catch (const std::exception &e)
+    // {
+    //     cmd->logger()->warn("读取失败。");
+    //     // return;
+    // }
 
-    cmd->logger()->debug("开始执行添加。");
+    // cmd->logger()->debug("开始执行添加。");
 }
 void doActionRm(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 {
@@ -255,58 +255,79 @@ void doActionMv(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 }
 void doActionConfInit(Command *cmd, Vector<Variant> args, Options opts)
 {
-    Logger* logger = cmd->logger();
+    if (opts.hasOption("connectName"))
+    {
+        String connectName = opts.getValue<String>("connectName", "");
+        if(connectName == "Local")
+        {
+            // TODO
+        }
+    }
+
+
+    // String repository;
+    // if (opts.hasOption("repository"))
+    // {
+    //     repository = opts.getValue<String>("repository", "");
+    //     if(repository.empty())
+    //     {
+    //         logger->error("存储仓库路径不能为空。");
+    //         return;
+    //     }
+    // }
+    // else
+    // {
+    //     logger->print("请输入存储路径");
+    //     std::cin >> repository;
+    // }
+
+    // String table;
+    // if (opts.hasOption("table"))
+    // {
+    //     table = opts.getValue<String>("table", "");
+    //     if (table.empty())
+    //     {
+    //         logger->warn("无效的表名，使用默认表名：default。");
+    //         table = "default";
+    //     }
+    // }
+    // else
+    // {
+    //     logger->print("请输入表名");
+    //     std::cin >> table;
+    // }
+    // String errMsg;
+    // if (!cfg.initLocal(table, repository, errMsg))
+    // {
+    //     logger->error("初始化失败：" + errMsg);
+    // }
+    // else
+    // {
+    //     logger->print("初始化成功。");
+    // }
+}
+void doActionConfInitWithLocal(Command *cmd, Vector<Variant> args, Options opts)
+{
+    Logger *logger = cmd->logger();
     Configer cfg;
-    if (cfg.checkLocal() && !opts.hasOption("cover"))
+    if (cfg.check() && !opts.hasOption("cover"))
     {
         logger->print("已经初始化过，是否重新初始化？(y/n)");
         String text;
-        std::cin >> text;
-        if (text != "y")
+        while (true)
         {
-            return;
+            std::cin >> text;
+            if (text == "y")
+            {
+                break;
+            }
+            else if (text == "n")
+            {
+                logger->print("取消初始化。");
+                return;
+            }
+            logger->print("无效的输入:" + text);
         }
-    }
-
-    String repository;
-    if (opts.hasOption("repository"))
-    {
-        repository = opts.getValue<String>("repository", "");
-        if(repository.empty())
-        {
-            logger->error("存储仓库路径不能为空。");
-            return;
-        }
-    }
-    else
-    {
-        logger->print("请输入存储路径");
-        std::cin >> repository;
-    }
-
-    String table;
-    if (opts.hasOption("table"))
-    {
-        table = opts.getValue<String>("table", "");
-        if (table.empty())
-        {
-            logger->warn("无效的表名，使用默认表名：default。");
-            table = "default";
-        }
-    }
-    else
-    {
-        logger->print("请输入表名");
-        std::cin >> table;
-    }
-    String errMsg;
-    if (!cfg.initLocal(table, repository, errMsg))
-    {
-        logger->error("初始化失败：" + errMsg);
-    }
-    else
-    {
-        logger->print("初始化成功。");
     }
 }
 
@@ -377,11 +398,17 @@ int main(int argc, char **argv)
         ->addCommand((new Command("conf", logger))
                          ->description("配置。")
                          ->addCommand((new Command("init", logger))
-                                         ->description("初始化todo仓库。")
-                                         ->option("-c --cover", "如果已经初始化，不再询问，直接覆盖。")
-                                         ->option("-r --repository <dir>", "直接指定存储仓库位置，不再询问。")
-                                         ->option("-t --table <name>", "直接指定表名，不再询问。")
-                                         ->action(doActionConfInit))
+                                          ->description("初始化仓库。")
+                                          ->option("-c --cover", "如果已经初始化，不再询问，直接覆盖。")
+                                          ->option("-t --table <tableName>", "指定表名，默认为default。")
+                                          ->option("--connect <connectName>", "指定连接方式。")
+                                          ->action(doActionConfInit))
+                         ->addCommand((new Command("initWithLocal", logger))
+                                          ->description("初始化本地仓库。")
+                                          ->option("-c --cover", "如果已经初始化，不再询问，直接覆盖。")
+                                          ->option("-t --table <tableName>", "指定表名，默认为default。")
+                                          ->option("-r --repository <repositoryPath>", "指定仓库路径。")
+                                          ->action(doActionConfInitWithLocal))
                          ->action([](Command *cmd, Vector<Variant> args, Map<String, Variant> opts) {
                              static_cast<TodoLogger *>(cmd->logger())->printHelp(cmd);
                          }))
