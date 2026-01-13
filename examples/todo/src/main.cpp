@@ -32,12 +32,16 @@ struct Table
     NLOHMANN_DEFINE_TYPE_INTRUSIVE(Table, name, date, list);
 };
 
+struct TableConnectInfo
+{
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(TableConnectInfo);
+};
 class TableConnect
 {
   public:
     virtual ~TableConnect();
     virtual bool checkConnect() = 0;
-    virtual bool initConnect() = 0;
+    virtual bool initConnect(TableConnectInfo *info) = 0;
     virtual bool connectToTable(const String &tableName) = 0;
     virtual bool getTable(Table &table) = 0;
     virtual bool addTodo(const Todo &doto) = 0;
@@ -45,7 +49,38 @@ class TableConnect
     virtual Vector<Todo> findTodoList(const String &name) = 0;
     virtual bool rmTodoById(const String &id) = 0;
     virtual bool rmTodoListById(const Vector<String> &idList) = 0;
+
+  public:
+    static void registerConnect(const String &name, std::function<TableConnect *()> creator)
+    {
+        connectors[name] = creator;
+    }
+    static bool hasConnect(const String &name)
+    {
+        return connectors.find(name) != connectors.end();
+    }
+    static std::function<TableConnect *()> getConnectCreator(const String &name)
+    {
+        if(!hasConnect(name))
+        {
+            return nullptr;
+        }
+        return connectors.find(name)->second;
+    }
+    static Vector<String> getConnectNames()
+    {
+        Vector<String> names;
+        for (auto it : connectors)
+        {
+            names.push_back(it.first);
+        }
+        return names;
+    }
+
+  private:
+    static Map<String, std::function<TableConnect *()>> connectors;
 };
+Map<String, std::function<TableConnect *()>> TableConnect::connectors;
 
 class Configer
 {
@@ -54,12 +89,20 @@ class Configer
     {
         String connect;
         String table = "default";
+        TableConnectInfo connectInfo;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Configer::Setting, connect, table);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Configer::Setting, connect, table, connectInfo);
     } setting;
-    
+
     Configer()
     {
+    }
+    ~Configer()
+    {
+        for (auto it : connectors)
+        {
+            delete it.second;
+        }
     }
 
     bool check()
@@ -86,21 +129,54 @@ class Configer
                 return false;
             }
         }
-        catch(const std::exception& e)
+        catch (const std::exception &e)
         {
             return false;
         }
 
         return true;
     }
-    bool initLocal(const String& table, const String& repository, String& errMsg)
+    bool initLocal(const String &connectName, const String &table, String &errMsg)
     {
-        // String appDataDir = getAppDataDir();
-        // if (!fs::exists(appDataDir) && !fs::create_directories(appDataDir))
-        // {
-        //     errMsg = "创建缓存目录失败，请检查权限。";
-        //     return false;
-        // }
+        if (!TableConnect::hasConnect(connectName))
+        {
+            errMsg = "不支持的连接方式：" + connectName;
+            for(auto name : TableConnect::getConnectNames())
+            {
+                errMsg += "，支持的连接方式：" + name;
+            }
+            return false;
+        }
+
+        TableConnect *connect = getTableConnect(connectName);
+        TableConnectInfo info;
+        bool succ = connect->initConnect(&info);
+        if (!succ)
+        {
+            errMsg = "初始化连接 " + connectName + " 失败，请检查连接配置。";
+            return false;
+        }
+
+        String appDataDir = getAppDataDir();
+        if (!fs::exists(appDataDir) && !fs::create_directories(appDataDir))
+        {
+            errMsg = "创建缓存目录失败，请检查权限。";
+            return false;
+        }
+
+        setting.connect = connectName;
+        setting.table = table;
+        setting.connectInfo = info;
+
+        json data = setting;
+        String dataText = data.dump(4);
+        std::ofstream out(getConfigPath());
+        out << dataText;
+
+        return succ;
+        // errMsg = connectName + " " + table;
+
+    
 
         // if (!fs::exists(repository) && !fs::create_directories(repository))
         // {
@@ -118,12 +194,30 @@ class Configer
 
         // setting.table = table;
 
-        // json data = setting;
-        // String dataText = data.dump(4);
-        // std::ofstream out(getConfigPath());
-        // out << dataText;
 
-        return true;
+
+        return false;
+    }
+    TableConnect *getTableConnect()
+    {
+        return getTableConnect(setting.connect);
+    }
+    TableConnect *getTableConnect(const String &connectName)
+    {
+        auto it = connectors.find(connectName);
+        if(it != connectors.end())
+        {
+            return it->second;
+        }
+
+        TableConnect *connect = TableConnect::getConnectCreator(connectName)();
+        if(connect)
+        {
+            connectors[connectName] = connect;
+            return connect;
+        }
+
+        return nullptr;
     }
 
   public:
@@ -147,6 +241,8 @@ class Configer
     // {
     //     return setting.repository + "/tables";
     // }
+  private:
+    Map<String, TableConnect *> connectors;
 };
 
 class TodoLogger : public Logger
@@ -210,7 +306,8 @@ class TodoLogger : public Logger
 void doActionAdd(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 {
     Configer cfg;
-    if (!cfg.check())
+    TableConnect* connect = nullptr;
+    if (!cfg.check() || !(connect = cfg.getTableConnect()))
     {
         cmd->logger()->error("未初始化仓库,请先运行todo conf init... 命令进行初始化，更多信息请运行 todo conf --help 查看。");
         return;
@@ -255,16 +352,78 @@ void doActionMv(Command *cmd, Vector<Variant> args, Map<String, Variant> opts)
 }
 void doActionConfInit(Command *cmd, Vector<Variant> args, Options opts)
 {
-    if (opts.hasOption("connectName"))
+    Logger *logger = cmd->logger();
+    Configer cfg;
+    if (cfg.check() && !opts.hasOption("cover"))
     {
-        String connectName = opts.getValue<String>("connectName", "");
-        if(connectName == "Local")
+        logger->print("已经初始化过，是否重新初始化？(y/n)");
+        String text;
+        while (true)
         {
-            // TODO
+            std::cin >> text;
+            if (text == "y")
+            {
+                break;
+            }
+            else if (text == "n")
+            {
+                logger->print("取消初始化。");
+                return;
+            }
+            logger->print("无效的输入:" + text);
         }
     }
 
+    String connectName;
+    if (opts.hasOption("connectName"))
+    {
+        connectName = opts.getValue<String>("connectName", "");
+    }
 
+    if (connectName.empty())
+    {
+        logger->print("请输入connectName");
+        while (true)
+        {
+            std::cin >> connectName;
+            if (connectName.empty())
+            {
+                logger->print("connectName 不能为空，请输入connectName");
+                continue;
+            }
+            break;
+        }
+    }
+
+    String table;
+    if (opts.hasOption("table"))
+    {
+        table = opts.getValue<String>("table", "");
+    }
+
+    if (table.empty())
+    {
+        logger->print("请输入table");
+        while (true)
+        {
+            std::cin >> table;
+            if (table.empty())
+            {
+                logger->print("table 不能为空，默认使用：default");
+            }
+            break;
+        }
+    }
+
+    String err;
+    if(cfg.initLocal(connectName, table, err))
+    {
+        logger->print("初始化成功。");
+    }
+    else
+    {
+        logger->print("初始化失败：" + err);
+    }
     // String repository;
     // if (opts.hasOption("repository"))
     // {
@@ -306,30 +465,30 @@ void doActionConfInit(Command *cmd, Vector<Variant> args, Options opts)
     //     logger->print("初始化成功。");
     // }
 }
-void doActionConfInitWithLocal(Command *cmd, Vector<Variant> args, Options opts)
-{
-    Logger *logger = cmd->logger();
-    Configer cfg;
-    if (cfg.check() && !opts.hasOption("cover"))
-    {
-        logger->print("已经初始化过，是否重新初始化？(y/n)");
-        String text;
-        while (true)
-        {
-            std::cin >> text;
-            if (text == "y")
-            {
-                break;
-            }
-            else if (text == "n")
-            {
-                logger->print("取消初始化。");
-                return;
-            }
-            logger->print("无效的输入:" + text);
-        }
-    }
-}
+// void doActionConfInitWithLocal(Command *cmd, Vector<Variant> args, Options opts)
+// {
+//     Logger *logger = cmd->logger();
+//     Configer cfg;
+//     if (cfg.check() && !opts.hasOption("cover"))
+//     {
+//         logger->print("已经初始化过，是否重新初始化？(y/n)");
+//         String text;
+//         while (true)
+//         {
+//             std::cin >> text;
+//             if (text == "y")
+//             {
+//                 break;
+//             }
+//             else if (text == "n")
+//             {
+//                 logger->print("取消初始化。");
+//                 return;
+//             }
+//             logger->print("无效的输入:" + text);
+//         }
+//     }
+// }
 
 int main(int argc, char **argv)
 {
@@ -403,12 +562,12 @@ int main(int argc, char **argv)
                                           ->option("-t --table <tableName>", "指定表名，默认为default。")
                                           ->option("--connect <connectName>", "指定连接方式。")
                                           ->action(doActionConfInit))
-                         ->addCommand((new Command("initWithLocal", logger))
-                                          ->description("初始化本地仓库。")
-                                          ->option("-c --cover", "如果已经初始化，不再询问，直接覆盖。")
-                                          ->option("-t --table <tableName>", "指定表名，默认为default。")
-                                          ->option("-r --repository <repositoryPath>", "指定仓库路径。")
-                                          ->action(doActionConfInitWithLocal))
+                        //  ->addCommand((new Command("initWithLocal", logger))
+                        //                   ->description("初始化本地仓库。")
+                        //                   ->option("-c --cover", "如果已经初始化，不再询问，直接覆盖。")
+                        //                   ->option("-t --table <tableName>", "指定表名，默认为default。")
+                        //                   ->option("-r --repository <repositoryPath>", "指定仓库路径。")
+                        //                   ->action(doActionConfInitWithLocal))
                          ->action([](Command *cmd, Vector<Variant> args, Map<String, Variant> opts) {
                              static_cast<TodoLogger *>(cmd->logger())->printHelp(cmd);
                          }))
